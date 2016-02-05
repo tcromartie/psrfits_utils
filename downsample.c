@@ -70,6 +70,8 @@ void convert_8bit_to_2bit(unsigned char *indata, unsigned char *outdata, int N)
     for (ii = 0; ii < N / 4; ii++, outdata++) {
 	*outdata = *indata ++ << 6;
 	*outdata += *indata++; //(should be skipping 2, not one???)
+	}
+}
 
 void pf_8bit_to_4bit(struct psrfits *pf)
 // This converts 8-bit pf->sub.data into 4-bit pf->sub.rawdata

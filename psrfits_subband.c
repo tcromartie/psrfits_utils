@@ -98,7 +98,7 @@ void get_chan_stats(struct psrfits *pfi, struct subband_info *si){
 }
 
 
-void new_scales_and_offsets(struct psrfits *pfo, int numunsigned) {
+/*void new_scales_and_offsets(struct psrfits *pfo, int numunsigned) {
     int ii, poln;
     double avg, std;
     const int nspec = pfo->hdr.nsblk / pfo->hdr.ds_time_fact;
@@ -120,6 +120,33 @@ void new_scales_and_offsets(struct psrfits *pfo, int numunsigned) {
             out_offs[ii] = avg - (target_avg * out_scls[ii]);
         }
     }
+}*/
+
+
+void new_scales_and_offsets(struct psrfits *pfo, int numunsigned) {
+    int ii, poln;
+    double avg, std;
+    const int nspec = pfo->hdr.nsblk / pfo->hdr.ds_time_fact;
+    const int nchan = pfo->hdr.nchan / pfo->hdr.ds_freq_fact;
+    const int npoln = (pfo->hdr.onlyI) ? 1 : pfo->hdr.npol;
+    const int bufwid = npoln * nchan;
+    // NEEDS TO BE ADAPTED FROM INPUT:
+    const float target_std = 20.0;  // This is reasonable for 8-bit data
+    // STOPPED HERE FEB5 12:45 PM
+    if (pfo->hdr.nbits = 4) {
+}
+    	for (poln = 0 ; poln < npoln ; poln++) {
+		// ALSO NEEDS TO BE ADAPTED FROM INPUT:
+        	float target_avg = (poln < numunsigned) ? 128.0 : 0.0;
+        	float *out_scls = pfo->sub.dat_scales + poln * nchan;
+        	float *out_offs = pfo->sub.dat_offsets + poln * nchan;
+        	for (ii = 0 ; ii < nchan ; ii++) {
+            		float *fptr = pfo->sub.fdata + poln * nchan + ii;
+            		avg_std(fptr, nspec, &avg, &std, bufwid);
+            		out_scls[ii] = std / target_std;
+            		out_offs[ii] = avg - (target_avg * out_scls[ii]);
+        		}
+   		}			
 }
 
 
@@ -356,6 +383,8 @@ void init_subbanding(struct psrfits *pfi,
     pfi->sub.dat_scales  = (float *)malloc(sizeof(float)
                                            * pfi->hdr.nchan * pfi->hdr.npol);
     pfi->sub.rawdata = (unsigned char *)malloc(pfi->sub.bytes_per_subint);
+    
+    // HARDCODED: don't need to modify though? Bigger buffer ok?
     if (pfi->hdr.nbits!=8) {
         pfi->sub.data = (unsigned char *)malloc(pfi->sub.bytes_per_subint *
                                                 (8 / pfi->hdr.nbits));

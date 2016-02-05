@@ -6,6 +6,23 @@
 //        separate input and output arrays and then a copy.
 //        Otherwise, the threads will step on each other.
 
+void convert_2bit_to_8bit(unsigned char *indata, unsigned char *outdata, int N)
+// This converts 2-bit indata to 8-bit outdata
+// N is the total number of data points
+{
+    int ii;
+    unsigned char uctmp;
+
+    // Convert all the data from 2-bit to 8-bit
+    for (ii = 0 ; ii < N / 4 ; ii++, indata++) { // NOT sure this shouldn't be N/2 still...
+        uctmp = *indata;
+        *outdata++ = uctmp >> 6;   
+        *outdata++ = (uctmp >> 4) & 0x03;
+	*outdata++ = (uctmp >> 2) & 0x03;
+	*outdata++ = uctmp & 0x03;
+    }
+}
+
 void convert_4bit_to_8bit(unsigned char *indata, unsigned char *outdata, int N)
 // This converts 4-bit indata to 8-bit outdata
 // N is the total number of data points
@@ -37,13 +54,22 @@ void convert_8bit_to_4bit(unsigned char *indata, unsigned char *outdata, int N)
 {
     int ii;
 
-    // Convert all the data from 4-bit to 8-bit
+    // Convert all the data from 8-bit to 4-bit (???)
     for (ii = 0 ; ii < N / 2 ; ii++, outdata++) {
         *outdata = *indata++ << 4;  // 1st 4 bits (MSBs) are first point
         *outdata += *indata++;      // 2nd 4 bits (LSBs) are second point
     }
 }
 
+void convert_8bit_to_2bit(unsigned char *indata, unsigned char *outdata, int N)
+// converts 8-bit indata to 2-bit outdata
+// N is total number of data points
+
+{
+    int ii;
+    for (ii = 0; ii < N / 4; ii++, outdata++) {
+	*outdata = *indata ++ << 6;
+	*outdata += *indata++; //(should be skipping 2, not one???)
 
 void pf_8bit_to_4bit(struct psrfits *pf)
 // This converts 8-bit pf->sub.data into 4-bit pf->sub.rawdata

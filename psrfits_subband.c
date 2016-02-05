@@ -105,9 +105,11 @@ void new_scales_and_offsets(struct psrfits *pfo, int numunsigned) {
     const int nchan = pfo->hdr.nchan / pfo->hdr.ds_freq_fact;
     const int npoln = (pfo->hdr.onlyI) ? 1 : pfo->hdr.npol;
     const int bufwid = npoln * nchan;
+    // NEEDS TO BE ADAPTED FROM INPUT:
     const float target_std = 20.0;  // This is reasonable for 8-bit data
 
     for (poln = 0 ; poln < npoln ; poln++) {
+	// ALSO NEEDS TO BE ADAPTED FROM INPUT:
         float target_avg = (poln < numunsigned) ? 128.0 : 0.0;
         float *out_scls = pfo->sub.dat_scales + poln * nchan;
         float *out_offs = pfo->sub.dat_offsets + poln * nchan;

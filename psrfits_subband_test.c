@@ -182,7 +182,6 @@ void fill_chans_with_avgs(int N, int samp_per_spect, float *buffer, float *avgs)
 // This routine removes the offsets from the floating point
 // data, divides by the scales, and converts (with clipping)
 // the resulting value into unsigned chars in the sub.data buffer
-// Need to add in option for 2-bit data here... 
 void un_scale_and_offset_data(struct psrfits *pf, int numunsigned)
 {
     int ii, jj, poln;
@@ -204,23 +203,15 @@ void un_scale_and_offset_data(struct psrfits *pf, int numunsigned)
                     ftmp = (ftmp < 0.0) ? 0.0 : ftmp;
                     *outptr = (unsigned char) ftmp;
                 }
-            } else if (pfo->hdr.nbits = 4) {
+            } else {
                 for (jj = 0 ; jj < nchan ; jj++, sptr++, optr++, inptr++, outptr++) {
                     //printf("%d  %f  %f  %f\n", jj, *inptr, *sptr, *optr);
                     float ftmp = (*inptr - *optr) / *sptr + 0.5;
                     ftmp = (ftmp >= 128.0) ? 128.0 : ftmp;
-                    ftmp = (ftmp < -127.0) ? -127.0 : ftmp;
+                    ftmp = (ftmp < -127.0) ? -127 : ftmp;
                     *outptr = (signed char) ftmp;
                 }
             }
-              else {
-		for (jj = 0 ; jj < nchan ; jj++, sptr++, optr++, inptr++, outptr++) {
-		    float ftmp = (*inptr - *optr) / *sptr + 0.5;
-		    ftmp = (ftmp >= 64.0) ? 64.0 : ftmp;
-		    ftmp = (ftmp < -63.0) ? -63.0 : ftmp;
-		    *outptr = (signed char) ftmp;
-		}
-	    }
         }
     }
 }

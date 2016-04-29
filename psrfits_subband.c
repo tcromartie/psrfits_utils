@@ -97,31 +97,6 @@ void get_chan_stats(struct psrfits *pfi, struct subband_info *si){
 }
 
 
-/*void new_scales_and_offsets(struct psrfits *pfo, int numunsigned) {
-    int ii, poln;
-    double avg, std;
-    const int nspec = pfo->hdr.nsblk / pfo->hdr.ds_time_fact;
-    const int nchan = pfo->hdr.nchan / pfo->hdr.ds_freq_fact;
-    const int npoln = (pfo->hdr.onlyI) ? 1 : pfo->hdr.npol;
-    const int bufwid = npoln * nchan;
-    // NEEDS TO BE ADAPTED FROM INPUT:
-    const float target_std = 20.0;  // This is reasonable for 8-bit data
-
-    for (poln = 0 ; poln < npoln ; poln++) {
-	// ALSO NEEDS TO BE ADAPTED FROM INPUT:
-        float target_avg = (poln < numunsigned) ? 128.0 : 0.0;
-        float *out_scls = pfo->sub.dat_scales + poln * nchan;
-        float *out_offs = pfo->sub.dat_offsets + poln * nchan;
-        for (ii = 0 ; ii < nchan ; ii++) {
-            float *fptr = pfo->sub.fdata + poln * nchan + ii;
-            avg_std(fptr, nspec, &avg, &std, bufwid);
-            out_scls[ii] = std / target_std;
-            out_offs[ii] = avg - (target_avg * out_scls[ii]);
-        }
-    }
-}*/
-
-
 void new_scales_and_offsets(struct psrfits *pfo, int numunsigned) {
     int ii, poln;
     double avg, std;
@@ -191,40 +166,62 @@ void un_scale_and_offset_data(struct psrfits *pf, int numunsigned)
     const int nspec = pf->hdr.nsblk / pf->hdr.ds_time_fact;
     const int nchan = pf->hdr.nchan / pf->hdr.ds_freq_fact;
     const int npoln = (pf->hdr.onlyI) ? 1 : pf->hdr.npol;
+    const float maxclip = (float) 2 << (pfo->hdr.nbits) - 1;
 
-    for (ii = 0 ; ii < nspec ; ii++) {
-        for (poln = 0 ; poln < npoln ; poln++) {
-            float *sptr = pf->sub.dat_scales + poln * nchan;
-            float *optr = pf->sub.dat_offsets + poln * nchan;
-            if (poln < numunsigned) {
-                for (jj = 0 ; jj < nchan ; jj++, sptr++, optr++, inptr++, outptr++) {
-                    //printf("%d  %f  %f  %f\n", jj, *inptr, *sptr, *optr);
-                    float ftmp = (*inptr - *optr) / *sptr + 0.5;
-                    ftmp = (ftmp >= 255.0) ? 255.0 : ftmp;
-                    ftmp = (ftmp < 0.0) ? 0.0 : ftmp;
-                    *outptr = (unsigned char) ftmp;
-                }
-            } else if (pfo->hdr.nbits = 4) {
-                for (jj = 0 ; jj < nchan ; jj++, sptr++, optr++, inptr++, outptr++) {
-                    //printf("%d  %f  %f  %f\n", jj, *inptr, *sptr, *optr);
-                    float ftmp = (*inptr - *optr) / *sptr + 0.5;
-                    ftmp = (ftmp >= 128.0) ? 128.0 : ftmp;
-                    ftmp = (ftmp < -127.0) ? -127.0 : ftmp;
-                    *outptr = (signed char) ftmp;
+    if (pfo->hdr.nbits = 8) {
+	if (poln < numunsigned) { // i.e. no negs needed	
+            for (jj = 0 ; jj < nchan ; jj++, sptr++, optr++, inptr++, outptr++) {
+    		float ftmp = (*inptr - *optr) / *sptr + 0.5; // fills last 0.5 of dynamic range (clip vs. rounding)
+		ftmp = (ftmp >= maxclip) ? maxclip : ftmp;
+		ftmp = (ftmp < 0.0) ? 0.0 : ftmp;
+		*outptr = (unsigned char) ftmp;
+		}
+	} else {
+            for (jj = 0 ; jj < nchan ; jj++, sptr++, optr++, inptr++, outptr++) {
+                float ftmp = (*inptr - *optr) / *sptr + 0.5;
+                ftmp = (ftmp >= 128.0) ? 128.0 : ftmp;
+                ftmp = (ftmp < -127.0) ? -127.0 : ftmp;
+                *outptr = (signed char) ftmp;
                 }
             }
-              else {
-		for (jj = 0 ; jj < nchan ; jj++, sptr++, optr++, inptr++, outptr++) {
-		    float ftmp = (*inptr - *optr) / *sptr + 0.5;
-		    ftmp = (ftmp >= 64.0) ? 64.0 : ftmp;
-		    ftmp = (ftmp < -63.0) ? -63.0 : ftmp;
-		    *outptr = (signed char) ftmp;
-		}
-	    }
-        }
-    }
-}
+	}
 
+    if (pfo->hdr.nbits = 4) {	
+	if (poln < numunsigned) { // i.e. no negs needed	
+            for (jj = 0 ; jj < nchan ; jj++, sptr++, optr++, inptr++, outptr++) {
+    		float ftmp = (*inptr - *optr) / *sptr + 0.5; // fills last 0.5 of dynamic range (clip vs. rounding)
+		ftmp = (ftmp >= maxclip) ? maxclip : ftmp;
+		ftmp = (ftmp < 0.0) ? 0.0 : ftmp;
+		*outptr = (unsigned char) ftmp;
+		}
+	} else {
+            for (jj = 0 ; jj < nchan ; jj++, sptr++, optr++, inptr++, outptr++) {
+                float ftmp = (*inptr - *optr) / *sptr + 0.5;
+                ftmp = (ftmp >= 8.0) ? 8.0 : ftmp;
+                ftmp = (ftmp < -7.0) ? -7.0 : ftmp;
+                *outptr = (signed char) ftmp;
+                }
+            }
+	}
+	    
+    if (pfo->hdr.nbits = 2) {	
+	if (poln < numunsigned) { // i.e. no negs needed	
+            for (jj = 0 ; jj < nchan ; jj++, sptr++, optr++, inptr++, outptr++) {
+    		float ftmp = (*inptr - *optr) / *sptr + 0.5; // fills last 0.5 of dynamic range (clip vs. rounding)
+		ftmp = (ftmp >= maxclip) ? maxclip : ftmp;
+		ftmp = (ftmp < 0.0) ? 0.0 : ftmp;
+		*outptr = (unsigned char) ftmp;
+		}
+	} else {
+            for (jj = 0 ; jj < nchan ; jj++, sptr++, optr++, inptr++, outptr++) {
+                float ftmp = (*inptr - *optr) / *sptr + 0.5;
+                ftmp = (ftmp >= 2.0) ? 2.0 : ftmp;
+                ftmp = (ftmp < -1.0) ? -1.0 : ftmp;
+                *outptr = (signed char) ftmp;
+                }
+            }
+	}
+}
 
 int get_current_row(struct psrfits *pfi, struct subband_info *si) {
     static int firsttime = 1, num_pad_blocks = 0;

@@ -17,6 +17,8 @@ Int    -startfile startfile {Starting file number of sequence} \
     -r 1 2000 -d 1
 Int    -numfiles  numfiles  {Number of files to process} \
     -r 1 2000
+Int    -outbits  outbits  {Number of output bits desired} \
+    -r 2 8
 Float  -filetime filetime {Desired length of the resulting files in sec} \
     -r 0.0 100000.0
 Float  -filelen  filelen  {Desired length of the resulting files in GB} \

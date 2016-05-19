@@ -11,7 +11,7 @@
 .\" it edited by clig, remove the respective pair of cligPart-lines.
 .\"
 .\" cligPart TITLE
-.TH "psrfits_subband" 1 "04Mar11" "Clig-manuals" "Programmer's Manual"
+.TH "psrfits_subband" 1 "19May16" "Clig-manuals" "Programmer's Manual"
 .\" cligPart TITLE end
 
 .\" cligPart NAME
@@ -29,6 +29,7 @@ Partially de-disperse and subband PSRFITS search-mode data.
 [-dstime dstime]
 [-startfile startfile]
 [-numfiles numfiles]
+[-outbits outbits]
 [-filetime filetime]
 [-filelen filelen]
 [-bytes]
@@ -66,6 +67,10 @@ Default: `1'
 Number of files to process,
 .br
 1 Int value between 1 and 2000.
+.IP -outbits
+Number of output bits desired,
+.br
+1 Int value between 2 and 8.
 .IP -filetime
 Desired length of the resulting files in sec,
 .br

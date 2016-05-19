@@ -42,6 +42,10 @@ static Cmdline cmd = {
   /* numfilesP = */ 0,
   /* numfiles = */ (int)0,
   /* numfilesC = */ 0,
+  /***** -outbits: Number of output bits desired */
+  /* outbitsP = */ 0,
+  /* outbits = */ (int)0,
+  /* outbitsC = */ 0,
   /***** -filetime: Desired length of the resulting files in sec */
   /* filetimeP = */ 0,
   /* filetime = */ (float)0,
@@ -761,7 +765,7 @@ catArgv(int argc, char **argv)
 void
 usage(void)
 {
-  fprintf(stderr,"%s","   [-dm dm] [-nsub nsub] [-dstime dstime] [-startfile startfile] [-numfiles numfiles] [-filetime filetime] [-filelen filelen] [-bytes] [-onlyI] [-weights wgtsfile] [-o outputbasename] [--] infile ...\n");
+  fprintf(stderr,"%s","   [-dm dm] [-nsub nsub] [-dstime dstime] [-startfile startfile] [-numfiles numfiles] [-outbits outbits] [-filetime filetime] [-filelen filelen] [-bytes] [-onlyI] [-weights wgtsfile] [-o outputbasename] [--] infile ...\n");
   fprintf(stderr,"%s","      \n");
   fprintf(stderr,"%s","      Partially de-disperse and subband PSRFITS search-mode data.\n");
   fprintf(stderr,"%s","      \n");
@@ -778,6 +782,8 @@ usage(void)
   fprintf(stderr,"%s","                default: `1'\n");
   fprintf(stderr,"%s","     -numfiles: Number of files to process\n");
   fprintf(stderr,"%s","                1 int value between 1 and 2000\n");
+  fprintf(stderr,"%s","      -outbits: Number of output bits desired\n");
+  fprintf(stderr,"%s","                1 int value between 2 and 8\n");
   fprintf(stderr,"%s","     -filetime: Desired length of the resulting files in sec\n");
   fprintf(stderr,"%s","                1 float value between 0.0 and 100000.0\n");
   fprintf(stderr,"%s","      -filelen: Desired length of the resulting files in GB\n");
@@ -790,7 +796,7 @@ usage(void)
   fprintf(stderr,"%s","                1 char* value\n");
   fprintf(stderr,"%s","        infile: Input file name(s) of the PSRFITs datafiles\n");
   fprintf(stderr,"%s","                1...2000 values\n");
-  fprintf(stderr,"%s","  version: 04Mar11\n");
+  fprintf(stderr,"%s","  version: 19May16\n");
   fprintf(stderr,"%s","  ");
   exit(EXIT_FAILURE);
 }
@@ -855,6 +861,16 @@ parseCmdline(int argc, char **argv)
       cmd.numfilesC = i-keep;
       checkIntLower("-numfiles", &cmd.numfiles, cmd.numfilesC, 2000);
       checkIntHigher("-numfiles", &cmd.numfiles, cmd.numfilesC, 1);
+      continue;
+    }
+
+    if( 0==strcmp("-outbits", argv[i]) ) {
+      int keep = i;
+      cmd.outbitsP = 1;
+      i = getIntOpt(argc, argv, i, &cmd.outbits, 1);
+      cmd.outbitsC = i-keep;
+      checkIntLower("-outbits", &cmd.outbits, cmd.outbitsC, 8);
+      checkIntHigher("-outbits", &cmd.outbits, cmd.outbitsC, 2);
       continue;
     }
 

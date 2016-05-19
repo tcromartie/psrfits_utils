@@ -29,6 +29,10 @@ typedef struct s_Cmdline {
   char numfilesP;
   int numfiles;
   int numfilesC;
+  /***** -outbits: Number of output bits desired */
+  char outbitsP;
+  int outbits;
+  int outbitsC;
   /***** -filetime: Desired length of the resulting files in sec */
   char filetimeP;
   float filetime;

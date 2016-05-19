@@ -87,15 +87,12 @@ void print_raw_chan_stats(unsigned char *data, int nspect, int nchan, int npol){
 void get_chan_stats(struct psrfits *pfi, struct subband_info *si){   
     int ii;
     double avg, std;
-
-
         avg_std(pfi->sub.fdata + ii, si->buflen / 8, &avg, &std, si->bufwid);
         //printf("%d %f %f\n", ii, avg, std);
         si->chan_avgs[ii] = avg;
         si->chan_stds[ii] = std;
     }
 }
-
 
 void new_scales_and_offsets(struct psrfits *pfo, int numunsigned) {
     int ii, poln;
@@ -104,25 +101,20 @@ void new_scales_and_offsets(struct psrfits *pfo, int numunsigned) {
     const int nchan = pfo->hdr.nchan / pfo->hdr.ds_freq_fact;
     const int npoln = (pfo->hdr.onlyI) ? 1 : pfo->hdr.npol;
     const int bufwid = npoln * nchan;
-    // NEEDS TO BE ADAPTED FROM INPUT:
     const float target_std = 20.0;  // This is reasonable for 8-bit data
-    // STOPPED HERE FEB5 12:45 PM
-    if (pfo->hdr.nbits = 4) {
-}
-    	for (poln = 0 ; poln < npoln ; poln++) {
-		// ALSO NEEDS TO BE ADAPTED FROM INPUT:
-        	float target_avg = (poln < numunsigned) ? 128.0 : 0.0;
-        	float *out_scls = pfo->sub.dat_scales + poln * nchan;
-        	float *out_offs = pfo->sub.dat_offsets + poln * nchan;
-        	for (ii = 0 ; ii < nchan ; ii++) {
-            		float *fptr = pfo->sub.fdata + poln * nchan + ii;
-            		avg_std(fptr, nspec, &avg, &std, bufwid);
-            		out_scls[ii] = std / target_std;
-            		out_offs[ii] = avg - (target_avg * out_scls[ii]);
-        		}
-   		}			
-}
 
+    for (poln = 0 ; poln < npoln ; poln++) {
+        float target_avg = (poln < numunsigned) ? 128.0 : 0.0;
+        float *out_scls = pfo->sub.dat_scales + poln * nchan;
+        float *out_offs = pfo->sub.dat_offsets + poln * nchan;
+        for (ii = 0 ; ii < nchan ; ii++) {
+            float *fptr = pfo->sub.fdata + poln * nchan + ii;
+            avg_std(fptr, nspec, &avg, &std, bufwid);
+            out_scls[ii] = std / target_std;
+            out_offs[ii] = avg - (target_avg * out_scls[ii]);
+        }
+    }
+}
 
 void new_weights(struct psrfits *inpf, struct psrfits *outpf)
 {
@@ -621,7 +613,7 @@ int main(int argc, char *argv[]) {
         // Compute new scales and offsets so that we can pack
         // into 8-bits reliably
         new_scales_and_offsets(&pfo, si.numunsigned);
-
+	
         // Convert the floats back to bytes in the output array
         un_scale_and_offset_data(&pfo, si.numunsigned);
         //print_raw_chan_stats(pfo.sub.data, pfo.hdr.nsblk / pfo.hdr.ds_time_fact,  

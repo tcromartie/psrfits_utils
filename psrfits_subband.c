@@ -97,7 +97,7 @@ void get_chan_stats(struct psrfits *pfi, struct subband_info *si){
     }
 }
 
-void new_scales_and_offsets(struct psrfits *pfo, int numunsigned) {
+void new_scales_and_offsets(struct psrfits *pfo, int numunsigned, Cmdline *cmd) {
     int ii, poln;
     double avg, std;
     const int nspec = pfo->hdr.nsblk / pfo->hdr.ds_time_fact;
@@ -120,7 +120,7 @@ void new_scales_and_offsets(struct psrfits *pfo, int numunsigned) {
         }
     }
     if (cmd->outputbits = 4) {
-        const float target_std = ***CHANGE ME***;
+        const float target_std = 5.0;
         for (poln = 0 ; poln < npoln ; poln++) {
                 float target_avg = (poln < numunsigned) ? 64.0 : 0.0;
                 float *out_scls = pfo->sub.dat_scales + poln * nchan;
@@ -134,7 +134,7 @@ void new_scales_and_offsets(struct psrfits *pfo, int numunsigned) {
         }
     }
     if (cmd->outputbits = 2) {
-        const float target_std = ***CHANGE ME***;
+        const float target_std = 0.7;
         for (poln = 0 ; poln < npoln ; poln++) {
                 float target_avg = (poln < numunsigned) ? 1.5 : 0.0;
                 float *out_scls = pfo->sub.dat_scales + poln * nchan;
@@ -183,7 +183,7 @@ void fill_chans_with_avgs(int N, int samp_per_spect, float *buffer, float *avgs)
 // data, divides by the scales, and converts (with clipping)
 // the resulting value into unsigned chars in the sub.data buffer
 
-void un_scale_and_offset_data(struct psrfits *pf, int numunsigned)
+void un_scale_and_offset_data(struct psrfits *pf, struct psrfits *pfi, int numunsigned, Cmdline *cmd)
 {
     int ii, jj, poln;
     float *inptr = pf->sub.fdata;
@@ -191,7 +191,9 @@ void un_scale_and_offset_data(struct psrfits *pf, int numunsigned)
     const int nspec = pf->hdr.nsblk / pf->hdr.ds_time_fact;
     const int nchan = pf->hdr.nchan / pf->hdr.ds_freq_fact;
     const int npoln = (pf->hdr.onlyI) ? 1 : pf->hdr.npol;
-    const float maxclip = (float) 2 << (pfo->hdr.nbits) - 1;
+    const float maxclip = (float) 2 << (pfi->hdr.nbits) - 1;
+    float *sptr = pf->sub.dat_scales + poln * nchan;
+    float *optr = pf->sub.dat_offsets + poln * nchan;
 
     if (cmd->outbits = 8) {
         if (poln < numunsigned) { // i.e. no negs needed        
@@ -358,15 +360,18 @@ void make_subbands(struct psrfits *pfi, struct subband_info *si) {
     free(inv_sumwgts);
 }
 
-void convert_8bit_to_2bit(unsigned char *indata, unsigned char *outdata, int N)
+void convert_8bit_to_2bit(struct psrfits *pfi, struct subband_info *si)
 // converts 8-bit indata to 2-bit outdata
 // N is total number of data points
 // originally in downsample.c
 {
-    int ii;
-    for (ii = 0; ii < N / 4; ii++, outdata++) {
-        *outdata = *indata ++ << 6;
-        *outdata += *indata++; //(should be skipping 2, not one???)
+	float *indata = pfi->sub.fdata;
+	float *outdata = si->outfbuffer;
+	int N = si->buflen;
+    	int ii;
+    	for (ii = 0; ii < N / 4; ii++, outdata++) {
+        	*outdata = *indata ++ << 6;
+        	*outdata += *indata++; //(should be skipping 2, not one???)
         }
 }
 
@@ -581,7 +586,7 @@ void read_weights(char *filenm, int *numchan, float **weights)
 
 int main(int argc, char *argv[]) {
     Cmdline *cmd;
-    struct psrfits pfi, pfo;
+    struct psrfits pfi, pfo, pf;
     struct subband_info si;
     int stat=0, padding=0, userN=0;
 
@@ -654,15 +659,15 @@ int main(int argc, char *argv[]) {
 
         // Compute new scales and offsets so that we can pack
         // into 8-bits reliably
-        new_scales_and_offsets(&pfo, si.numunsigned);
+        new_scales_and_offsets(&pfo, si.numunsigned, cmd);
 
         // Convert the floats back to bytes in the output array
-        un_scale_and_offset_data(&pfo, si.numunsigned);
+        un_scale_and_offset_data(&pf, &pfi, si.numunsigned, cmd);
         //print_raw_chan_stats(pfo.sub.data, pfo.hdr.nsblk / pfo.hdr.ds_time_fact,  
         //                     pfo.hdr.nchan / pfo.hdr.ds_freq_fact, pfo.hdr.npol);
 
 	// Clip the extra bits(?)
-	// convert_8bit_to_2bit(
+	convert_8bit_to_2bit(&pfi, &si);
 
         // Write the new row to the output file
         pfo.sub.offs = (pfo.tot_rows+0.5) * pfo.sub.tsubint;

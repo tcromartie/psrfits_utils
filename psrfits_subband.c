@@ -104,6 +104,8 @@ void new_scales_and_offsets(struct psrfits *pfo, int numunsigned, Cmdline *cmd) 
     const int nchan = pfo->hdr.nchan / pfo->hdr.ds_freq_fact;
     const int npoln = (pfo->hdr.onlyI) ? 1 : pfo->hdr.npol;
     const int bufwid = npoln * nchan;
+    float target_avg;
+    float target_std;
     if (cmd->stdev = 0.0) {
     	if (cmd->outbits = 8) {
     		target_std = 20.0;
@@ -115,7 +117,7 @@ void new_scales_and_offsets(struct psrfits *pfo, int numunsigned, Cmdline *cmd) 
     		target_std = 0.7;
     	}
     }
-    if (cmd->target_avg = -1000.0) {
+    if (cmd->target_avg = 1000.0) {
     	if (cmd->outbits = 8) {
     		target_avg = 128.0 - 0.5 * target_std;
     	}
@@ -182,11 +184,11 @@ void un_scale_and_offset_data(struct psrfits *pf, struct psrfits *pfi, int numun
     const int nspec = pf->hdr.nsblk / pf->hdr.ds_time_fact;
     const int nchan = pf->hdr.nchan / pf->hdr.ds_freq_fact;
     const int npoln = (pf->hdr.onlyI) ? 1 : pf->hdr.npol;
-    const float maxclip = (float) 2 << (pfi->hdr.nbits) - 1;
+    const float maxclip = (float) (2 << (pfi->hdr.nbits) - 1);
     float *sptr = pf->sub.dat_scales + poln * nchan;
     float *optr = pf->sub.dat_offsets + poln * nchan;
-    const int polclip_min = 0;
-    const int polclip_max = 0;
+    int polclip_min = 0;
+    int polclip_max = 0;
     if (cmd->outbits = 8) {
     	polclip_min = -127.0;
     	polclip_max = 128.0;
@@ -326,14 +328,14 @@ void make_subbands(struct psrfits *pfi, struct subband_info *si) {
     free(inv_sumwgts);
 }
 
-void pack_8bit_to_2bit(unsigned char *indata, unsigned char *outdata)
+void pack_8bit_to_2bit(struct psrfits *pfi, struct subband_info *si)
 // PACKS into 2 bits
 // converts 8-bit indata to 2-bit outdata
 // N is total number of data points
 {
-	unsigned char *indata  = pfi->sub.fdata;
-	unsigned char *outdata  = pfi->sub.rawdata;
-    int N = 
+    unsigned char *indata  = pfi->sub.fdata;
+    unsigned char *outdata  = pfi->sub.rawdata;
+    int N = pfi->hdr.nchan; 
     int ii;
     for (ii = 0; ii < N / 4; ii++, outdata++) {
         *outdata = *indata++ << 6;
@@ -343,10 +345,11 @@ void pack_8bit_to_2bit(unsigned char *indata, unsigned char *outdata)
     }
 }
 
-void pack_2bit_to_8bit(unsigned char *indata, unsigned char *outdata, int N)
+void pack_2bit_to_8bit(struct psrfits *pfi, struct subband_info *si)
 // This converts 2-bit indata to 8-bit outdata
 // N is the total number of data points
 {
+    int N = pfi->hdr.nchan;
     int ii;
     unsigned char *indata  = pfi->sub.rawdata;
     unsigned char *outdata  = pfi->sub.fdata;
@@ -359,11 +362,12 @@ void pack_2bit_to_8bit(unsigned char *indata, unsigned char *outdata, int N)
     }
 }
 
-void s_pack_2bit_to_8bit(char *indata, char *outdata, int N)
+/*void s_pack_2bit_to_8bit(struct psrfits *pfi, struct subband_info *si)
 // NEED TO EDIT SIGNED FUNCTIONS BEFORE USE; specify in/out as signed char, etc.
 // This converts 2-bit indata to 8-bit outdata
 // N is the total number of data points
 {
+    int N = pfi->hdr.nchan;
     int ii;
     // This provides automatic sign extension (via a bitfield)
     // which is essential for twos complement signed numbers
@@ -383,11 +387,12 @@ void s_pack_2bit_to_8bit(char *indata, char *outdata, int N)
     }
 }
 
-void s_pack_8bit_to_2bit(char *indata, char *outdata, int N)
+void s_pack_8bit_to_2bit(struct psrfits *pfi, struct subband_info *si)
 // NEED TO EDIT SIGNED FUNCTIONS BEFORE USE 
 // converts 8-bit indata to 2-bit outdata
 // N is total number of data points
 {
+    int N = pfi->hdr.nchan;
     int ii;
     for (ii = 0; ii < N / 4; ii++, outdata++) {
         *outdata = (*indata++ & 0x03) << 6;
@@ -396,7 +401,7 @@ void s_pack_8bit_to_2bit(char *indata, char *outdata, int N)
         *outdata |= *indata++ & 0x03;
     }
 }
-
+*/
 void init_subbanding(struct psrfits *pfi,
                      struct psrfits *pfo,
                      struct subband_info *si,
@@ -669,9 +674,9 @@ int main(int argc, char *argv[]) {
         //                     pfi.hdr.nchan, pfi.hdr.npol);
 
         // if the input data isn't 8 bit, unpack:
-        if (pfi.nbits == 2)
+        if (pfi.hdr.nbits == 2)
         	pack_2bit_to_8bit(&pfi, &si);
-        //if (pfi.nbits == 4)
+        //if (pfi.hdr.nbits == 4)
         	//***NEED TO ADD THIS FEATURE***
 
         // Now create the subbanded row in the output buffer

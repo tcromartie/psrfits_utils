@@ -46,6 +46,10 @@ static Cmdline cmd = {
   /* outbitsP = */ 0,
   /* outbits = */ (int)0,
   /* outbitsC = */ 0,
+  /***** -edge_chan: Number of channels on each side of band to zap */
+  /* edge_chanP = */ 1,
+  /* edge_chan = */ 0,
+  /* edge_chanC = */ 1,
   /***** -filetime: Desired length of the resulting files in sec */
   /* filetimeP = */ 0,
   /* filetime = */ (float)0,
@@ -54,6 +58,14 @@ static Cmdline cmd = {
   /* filelenP = */ 0,
   /* filelen = */ (float)0,
   /* filelenC = */ 0,
+  /***** -stdev: Target standard dev will be set in code based on outbits */
+  /* stdevP = */ 1,
+  /* stdev = */ 0.0,
+  /* stdevC = */ 1,
+  /***** -target_avg: Target average for converted data; set in code based on outbits */
+  /* target_avgP = */ 1,
+  /* target_avg = */ 1000.0,
+  /* target_avgC = */ 1,
   /***** -bytes: Make the raw data unsigned chars instead of signed shorts */
   /* bytesP = */ 0,
   /***** -onlyI: Only output total intensity data */
@@ -765,38 +777,47 @@ catArgv(int argc, char **argv)
 void
 usage(void)
 {
-  fprintf(stderr,"%s","   [-dm dm] [-nsub nsub] [-dstime dstime] [-startfile startfile] [-numfiles numfiles] [-outbits outbits] [-filetime filetime] [-filelen filelen] [-bytes] [-onlyI] [-weights wgtsfile] [-o outputbasename] [--] infile ...\n");
+  fprintf(stderr,"%s","   [-dm dm] [-nsub nsub] [-dstime dstime] [-startfile startfile] [-numfiles numfiles] [-outbits outbits] [-edge_chan edge_chan] [-filetime filetime] [-filelen filelen] [-stdev stdev] [-target_avg target_avg] [-bytes] [-onlyI] [-weights wgtsfile] [-o outputbasename] [--] infile ...\n");
   fprintf(stderr,"%s","      \n");
   fprintf(stderr,"%s","      Partially de-disperse and subband PSRFITS search-mode data.\n");
   fprintf(stderr,"%s","      \n");
-  fprintf(stderr,"%s","           -dm: Dispersion measure to use for the subband de-dispersion\n");
-  fprintf(stderr,"%s","                1 double value between 0.0 and 10000.0\n");
-  fprintf(stderr,"%s","                default: `0.0'\n");
-  fprintf(stderr,"%s","         -nsub: Number of output frequency subbands\n");
-  fprintf(stderr,"%s","                1 int value between 1 and 4096\n");
-  fprintf(stderr,"%s","       -dstime: Power-of-2 number of samples to average in time\n");
-  fprintf(stderr,"%s","                1 int value between 1 and 128\n");
-  fprintf(stderr,"%s","                default: `1'\n");
-  fprintf(stderr,"%s","    -startfile: Starting file number of sequence\n");
-  fprintf(stderr,"%s","                1 int value between 1 and 2000\n");
-  fprintf(stderr,"%s","                default: `1'\n");
-  fprintf(stderr,"%s","     -numfiles: Number of files to process\n");
-  fprintf(stderr,"%s","                1 int value between 1 and 2000\n");
-  fprintf(stderr,"%s","      -outbits: Number of output bits desired\n");
-  fprintf(stderr,"%s","                1 int value between 2 and 8\n");
-  fprintf(stderr,"%s","     -filetime: Desired length of the resulting files in sec\n");
-  fprintf(stderr,"%s","                1 float value between 0.0 and 100000.0\n");
-  fprintf(stderr,"%s","      -filelen: Desired length of the resulting files in GB\n");
-  fprintf(stderr,"%s","                1 float value between 0.0 and 1000.0\n");
-  fprintf(stderr,"%s","        -bytes: Make the raw data unsigned chars instead of signed shorts\n");
-  fprintf(stderr,"%s","        -onlyI: Only output total intensity data\n");
-  fprintf(stderr,"%s","      -weights: Filename containing ASCII list of channels and weights to use\n");
-  fprintf(stderr,"%s","                1 char* value\n");
-  fprintf(stderr,"%s","            -o: Basename for the output files\n");
-  fprintf(stderr,"%s","                1 char* value\n");
-  fprintf(stderr,"%s","        infile: Input file name(s) of the PSRFITs datafiles\n");
-  fprintf(stderr,"%s","                1...2000 values\n");
-  fprintf(stderr,"%s","  version: 27May16\n");
+  fprintf(stderr,"%s","            -dm: Dispersion measure to use for the subband de-dispersion\n");
+  fprintf(stderr,"%s","                 1 double value between 0.0 and 10000.0\n");
+  fprintf(stderr,"%s","                 default: `0.0'\n");
+  fprintf(stderr,"%s","          -nsub: Number of output frequency subbands\n");
+  fprintf(stderr,"%s","                 1 int value between 1 and 4096\n");
+  fprintf(stderr,"%s","        -dstime: Power-of-2 number of samples to average in time\n");
+  fprintf(stderr,"%s","                 1 int value between 1 and 128\n");
+  fprintf(stderr,"%s","                 default: `1'\n");
+  fprintf(stderr,"%s","     -startfile: Starting file number of sequence\n");
+  fprintf(stderr,"%s","                 1 int value between 1 and 2000\n");
+  fprintf(stderr,"%s","                 default: `1'\n");
+  fprintf(stderr,"%s","      -numfiles: Number of files to process\n");
+  fprintf(stderr,"%s","                 1 int value between 1 and 2000\n");
+  fprintf(stderr,"%s","       -outbits: Number of output bits desired\n");
+  fprintf(stderr,"%s","                 1 int value between 2 and 8\n");
+  fprintf(stderr,"%s","     -edge_chan: Number of channels on each side of band to zap\n");
+  fprintf(stderr,"%s","                 1 int value between 0 and 10000\n");
+  fprintf(stderr,"%s","                 default: `0'\n");
+  fprintf(stderr,"%s","      -filetime: Desired length of the resulting files in sec\n");
+  fprintf(stderr,"%s","                 1 float value between 0.0 and 100000.0\n");
+  fprintf(stderr,"%s","       -filelen: Desired length of the resulting files in GB\n");
+  fprintf(stderr,"%s","                 1 float value between 0.0 and 1000.0\n");
+  fprintf(stderr,"%s","         -stdev: Target standard dev will be set in code based on outbits\n");
+  fprintf(stderr,"%s","                 1 float value between 0.0 and 1000.0\n");
+  fprintf(stderr,"%s","                 default: `0.0'\n");
+  fprintf(stderr,"%s","    -target_avg: Target average for converted data; set in code based on outbits\n");
+  fprintf(stderr,"%s","                 1 float value between 0.0 and 1000.0\n");
+  fprintf(stderr,"%s","                 default: `1000.0'\n");
+  fprintf(stderr,"%s","         -bytes: Make the raw data unsigned chars instead of signed shorts\n");
+  fprintf(stderr,"%s","         -onlyI: Only output total intensity data\n");
+  fprintf(stderr,"%s","       -weights: Filename containing ASCII list of channels and weights to use\n");
+  fprintf(stderr,"%s","                 1 char* value\n");
+  fprintf(stderr,"%s","             -o: Basename for the output files\n");
+  fprintf(stderr,"%s","                 1 char* value\n");
+  fprintf(stderr,"%s","         infile: Input file name(s) of the PSRFITs datafiles\n");
+  fprintf(stderr,"%s","                 1...2000 values\n");
+  fprintf(stderr,"%s","  version: 13Jun16\n");
   fprintf(stderr,"%s","  ");
   exit(EXIT_FAILURE);
 }
@@ -874,6 +895,16 @@ parseCmdline(int argc, char **argv)
       continue;
     }
 
+    if( 0==strcmp("-edge_chan", argv[i]) ) {
+      int keep = i;
+      cmd.edge_chanP = 1;
+      i = getIntOpt(argc, argv, i, &cmd.edge_chan, 1);
+      cmd.edge_chanC = i-keep;
+      checkIntLower("-edge_chan", &cmd.edge_chan, cmd.edge_chanC, 10000);
+      checkIntHigher("-edge_chan", &cmd.edge_chan, cmd.edge_chanC, 0);
+      continue;
+    }
+
     if( 0==strcmp("-filetime", argv[i]) ) {
       int keep = i;
       cmd.filetimeP = 1;
@@ -891,6 +922,26 @@ parseCmdline(int argc, char **argv)
       cmd.filelenC = i-keep;
       checkFloatLower("-filelen", &cmd.filelen, cmd.filelenC, 1000.0);
       checkFloatHigher("-filelen", &cmd.filelen, cmd.filelenC, 0.0);
+      continue;
+    }
+
+    if( 0==strcmp("-stdev", argv[i]) ) {
+      int keep = i;
+      cmd.stdevP = 1;
+      i = getFloatOpt(argc, argv, i, &cmd.stdev, 1);
+      cmd.stdevC = i-keep;
+      checkFloatLower("-stdev", &cmd.stdev, cmd.stdevC, 1000.0);
+      checkFloatHigher("-stdev", &cmd.stdev, cmd.stdevC, 0.0);
+      continue;
+    }
+
+    if( 0==strcmp("-target_avg", argv[i]) ) {
+      int keep = i;
+      cmd.target_avgP = 1;
+      i = getFloatOpt(argc, argv, i, &cmd.target_avg, 1);
+      cmd.target_avgC = i-keep;
+      checkFloatLower("-target_avg", &cmd.target_avg, cmd.target_avgC, 1000.0);
+      checkFloatHigher("-target_avg", &cmd.target_avg, cmd.target_avgC, 0.0);
       continue;
     }
 

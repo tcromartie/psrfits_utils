@@ -33,6 +33,10 @@ typedef struct s_Cmdline {
   char outbitsP;
   int outbits;
   int outbitsC;
+  /***** -edge_chan: Number of channels on each side of band to zap */
+  char edge_chanP;
+  int edge_chan;
+  int edge_chanC;
   /***** -filetime: Desired length of the resulting files in sec */
   char filetimeP;
   float filetime;
@@ -41,6 +45,14 @@ typedef struct s_Cmdline {
   char filelenP;
   float filelen;
   int filelenC;
+  /***** -stdev: Target standard dev will be set in code based on outbits */
+  char stdevP;
+  float stdev;
+  int stdevC;
+  /***** -target_avg: Target average for converted data; set in code based on outbits */
+  char target_avgP;
+  float target_avg;
+  int target_avgC;
   /***** -bytes: Make the raw data unsigned chars instead of signed shorts */
   char bytesP;
   /***** -onlyI: Only output total intensity data */

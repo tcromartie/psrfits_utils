@@ -11,7 +11,7 @@
 .\" it edited by clig, remove the respective pair of cligPart-lines.
 .\"
 .\" cligPart TITLE
-.TH "psrfits_subband" 1 "27May16" "Clig-manuals" "Programmer's Manual"
+.TH "psrfits_subband" 1 "13Jun16" "Clig-manuals" "Programmer's Manual"
 .\" cligPart TITLE end
 
 .\" cligPart NAME
@@ -30,8 +30,11 @@ Partially de-disperse and subband PSRFITS search-mode data.
 [-startfile startfile]
 [-numfiles numfiles]
 [-outbits outbits]
+[-edge_chan edge_chan]
 [-filetime filetime]
 [-filelen filelen]
+[-stdev stdev]
+[-target_avg target_avg]
 [-bytes]
 [-onlyI]
 [-weights wgtsfile]
@@ -71,6 +74,12 @@ Number of files to process,
 Number of output bits desired,
 .br
 1 Int value between 2 and 8.
+.IP -edge_chan
+Number of channels on each side of band to zap,
+.br
+1 Int value between 0 and 10000.
+.br
+Default: `0'
 .IP -filetime
 Desired length of the resulting files in sec,
 .br
@@ -79,6 +88,18 @@ Desired length of the resulting files in sec,
 Desired length of the resulting files in GB,
 .br
 1 Float value between 0.0 and 1000.0.
+.IP -stdev
+Target standard dev will be set in code based on outbits,
+.br
+1 Float value between 0.0 and 1000.0.
+.br
+Default: `0.0'
+.IP -target_avg
+Target average for converted data; set in code based on outbits,
+.br
+1 Float value between 0.0 and 1000.0.
+.br
+Default: `1000.0'
 .IP -bytes
 Make the raw data unsigned chars instead of signed shorts.
 .IP -onlyI

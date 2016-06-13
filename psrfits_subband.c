@@ -326,13 +326,14 @@ void make_subbands(struct psrfits *pfi, struct subband_info *si) {
     free(inv_sumwgts);
 }
 
-void pack_8bit_to_2bit(unsigned char *indata, unsigned char *outdata, int N)
+void pack_8bit_to_2bit(unsigned char *indata, unsigned char *outdata)
 // PACKS into 2 bits
 // converts 8-bit indata to 2-bit outdata
 // N is total number of data points
 {
 	unsigned char *indata  = pfi->sub.fdata;
 	unsigned char *outdata  = pfi->sub.rawdata;
+    int N = 
     int ii;
     for (ii = 0; ii < N / 4; ii++, outdata++) {
         *outdata = *indata++ << 6;
@@ -693,8 +694,8 @@ int main(int argc, char *argv[]) {
         //print_raw_chan_stats(pfo.sub.data, pfo.hdr.nsblk / pfo.hdr.ds_time_fact,  
         //                     pfo.hdr.nchan / pfo.hdr.ds_freq_fact, pfo.hdr.npol);
 
-		// pack into 2 bits
-		pack_8bit_to_2bit(&pfi, &si);
+	// pack into 2 bits
+	pack_8bit_to_2bit(&pfi, &si);
 
         // Write the new row to the output file
         pfo.sub.offs = (pfo.tot_rows+0.5) * pfo.sub.tsubint;

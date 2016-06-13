@@ -19,10 +19,16 @@ Int    -numfiles  numfiles  {Number of files to process} \
     -r 1 2000
 Int    -outbits  outbits  {Number of output bits desired} \
     -r 2 8
+Int    -edge_chan edge_chan {Number of channels on each side of band to zap} \
+    -r 0 10000 -d 0
 Float  -filetime filetime {Desired length of the resulting files in sec} \
     -r 0.0 100000.0
 Float  -filelen  filelen  {Desired length of the resulting files in GB} \
     -r 0.0 1000.0
+Float -stdev stdev {Target standard dev will be set in code based on outbits} \
+    -r 0.0 1000.0 -d 0.0
+Float -target_avg target_avg {Target average for converted data; set in code based on outbits} \
+    -r -1000.0 1000.0 -d -1000.0
 Flag   -bytes    bytes    {Make the raw data unsigned chars instead of signed shorts}
 Flag   -onlyI    onlyI    {Only output total intensity data}
 String -weights  wgtsfile {Filename containing ASCII list of channels and weights to use}

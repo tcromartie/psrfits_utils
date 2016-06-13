@@ -796,7 +796,7 @@ usage(void)
   fprintf(stderr,"%s","                1 char* value\n");
   fprintf(stderr,"%s","        infile: Input file name(s) of the PSRFITs datafiles\n");
   fprintf(stderr,"%s","                1...2000 values\n");
-  fprintf(stderr,"%s","  version: 19May16\n");
+  fprintf(stderr,"%s","  version: 27May16\n");
   fprintf(stderr,"%s","  ");
   exit(EXIT_FAILURE);
 }

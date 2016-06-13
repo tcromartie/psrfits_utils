@@ -104,48 +104,39 @@ void new_scales_and_offsets(struct psrfits *pfo, int numunsigned, Cmdline *cmd) 
     const int nchan = pfo->hdr.nchan / pfo->hdr.ds_freq_fact;
     const int npoln = (pfo->hdr.onlyI) ? 1 : pfo->hdr.npol;
     const int bufwid = npoln * nchan;
+    if (cmd->stdev = 0.0) {
+    	if (cmd->outbits = 8) {
+    		target_std = 20.0;
+    	}
+    	if (cmd->outbits = 4) {
+    		target_std = 5.0;
+    	}
+    	if (cmd->outbits = 2) {
+    		target_std = 0.7;
+    	}
+    }
+    if (cmd->target_avg = -1000.0) {
+    	if (cmd->outbits = 8) {
+    		target_avg = 128.0 - 0.5 * target_std;
+    	}
+    	if (cmd->outbits = 4) {
+    		target_avg = 8.0 - 0.5 * target_std;
+    	}
+    	if (cmd->outbits = 2) {
+    		target_std = 2.0 - 0.5 * target_std;
+    	}
+    }
 
-    if (cmd->outputbits = 8) {
-        const float target_std = 20.0;
-        for (poln = 0 ; poln < npoln ; poln++) {
-                float target_avg = (poln < numunsigned) ? 128.0 : 0.0;
-                float *out_scls = pfo->sub.dat_scales + poln * nchan;
-                float *out_offs = pfo->sub.dat_offsets + poln * nchan;
-                for (ii = 0 ; ii < nchan ; ii++) {
-                        float *fptr = pfo->sub.fdata + poln * nchan + ii;
-                        avg_std(fptr, nspec, &avg, &std, bufwid);
-                        out_scls[ii] = std / target_std;
-                        out_offs[ii] = avg - (target_avg * out_scls[ii]);
-                }
-        }
-    }
-    if (cmd->outputbits = 4) {
-        const float target_std = 5.0;
-        for (poln = 0 ; poln < npoln ; poln++) {
-                float target_avg = (poln < numunsigned) ? 64.0 : 0.0;
-                float *out_scls = pfo->sub.dat_scales + poln * nchan;
-                float *out_offs = pfo->sub.dat_offsets + poln * nchan;
-                for (ii = 0 ; ii < nchan ; ii++) {
-                        float *fptr = pfo->sub.fdata + poln * nchan + ii;
-                        avg_std(fptr, nspec, &avg, &std, bufwid);
-                        out_scls[ii] = std / target_std;
-                        out_offs[ii] = avg - (target_avg * out_scls[ii]);
-                }
-        }
-    }
-    if (cmd->outputbits = 2) {
-        const float target_std = 0.7;
-        for (poln = 0 ; poln < npoln ; poln++) {
-                float target_avg = (poln < numunsigned) ? 1.5 : 0.0;
-                float *out_scls = pfo->sub.dat_scales + poln * nchan;
-                float *out_offs = pfo->sub.dat_offsets + poln * nchan;
-                for (ii = 0 ; ii < nchan ; ii++) {
-                        float *fptr = pfo->sub.fdata + poln * nchan + ii;
-                        avg_std(fptr, nspec, &avg, &std, bufwid);
-                        out_scls[ii] = std / target_std;
-                        out_offs[ii] = avg - (target_avg * out_scls[ii]);
-                }
-        }
+    for (poln = 0 ; poln < npoln ; poln++) {
+            float target_avg = (poln < numunsigned) ? target_avg : 0.0;
+            float *out_scls = pfo->sub.dat_scales + poln * nchan;
+            float *out_offs = pfo->sub.dat_offsets + poln * nchan;
+            for (ii = 0 ; ii < nchan ; ii++) {
+                    float *fptr = pfo->sub.fdata + poln * nchan + ii;
+                    avg_std(fptr, nspec, &avg, &std, bufwid);
+                    out_scls[ii] = std / target_std;
+                    out_offs[ii] = avg - (target_avg * out_scls[ii]);
+            }
     }
 }
 
@@ -194,58 +185,33 @@ void un_scale_and_offset_data(struct psrfits *pf, struct psrfits *pfi, int numun
     const float maxclip = (float) 2 << (pfi->hdr.nbits) - 1;
     float *sptr = pf->sub.dat_scales + poln * nchan;
     float *optr = pf->sub.dat_offsets + poln * nchan;
-
+    const int polclip_min = 0;
+    const int polclip_max = 0;
     if (cmd->outbits = 8) {
-        if (poln < numunsigned) { // i.e. no negs needed        
-            for (jj = 0 ; jj < nchan ; jj++, sptr++, optr++, inptr++, outptr++) {
-                float ftmp = (*inptr - *optr) / *sptr + 0.5; // fills last 0.5 of dynamic range (clip vs. rounding)
-                ftmp = (ftmp >= maxclip) ? maxclip : ftmp;
-                ftmp = (ftmp < 0.0) ? 0.0 : ftmp;
-                *outptr = (unsigned char) ftmp;
-                }
-        } else {
-            for (jj = 0 ; jj < nchan ; jj++, sptr++, optr++, inptr++, outptr++) {
-                float ftmp = (*inptr - *optr) / *sptr + 0.5;
-                ftmp = (ftmp >= 128.0) ? 128.0 : ftmp;
-                ftmp = (ftmp < -127.0) ? -127.0 : ftmp;
-                *outptr = (signed char) ftmp;
-                }
-            }
-        }
-
+    	polclip_min = -127.0;
+    	polclip_max = 128.0;
+    }
     if (cmd->outbits = 4) {
-        if (poln < numunsigned) { // i.e. no negs needed        
-            for (jj = 0 ; jj < nchan ; jj++, sptr++, optr++, inptr++, outptr++) {
-                float ftmp = (*inptr - *optr) / *sptr + 0.5; // fills last 0.5 of dynamic range (clip vs. rounding)
-                ftmp = (ftmp >= maxclip) ? maxclip : ftmp;
-                ftmp = (ftmp < 0.0) ? 0.0 : ftmp;
-                *outptr = (unsigned char) ftmp;
-                }
-        } else {
-            for (jj = 0 ; jj < nchan ; jj++, sptr++, optr++, inptr++, outptr++) {
-                float ftmp = (*inptr - *optr) / *sptr + 0.5;
-                ftmp = (ftmp >= 8.0) ? 8.0 : ftmp;
-                ftmp = (ftmp < -7.0) ? -7.0 : ftmp;
-                *outptr = (signed char) ftmp;
-                }
-            }
-        }
-
+    	polclip_min = -7.0;
+    	polclip_max = 8.0;
+    }
     if (cmd->outbits = 2) {
-        if (poln < numunsigned) { // i.e. no negs needed        
-            for (jj = 0 ; jj < nchan ; jj++, sptr++, optr++, inptr++, outptr++) {
-                float ftmp = (*inptr - *optr) / *sptr + 0.5; // fills last 0.5 of dynamic range (clip vs. rounding)
-                ftmp = (ftmp >= maxclip) ? maxclip : ftmp;
-                ftmp = (ftmp < 0.0) ? 0.0 : ftmp;
-                *outptr = (unsigned char) ftmp;
-                }
-        } else {
-            for (jj = 0 ; jj < nchan ; jj++, sptr++, optr++, inptr++, outptr++) {
-                float ftmp = (*inptr - *optr) / *sptr + 0.5;
-                ftmp = (ftmp >= 2.0) ? 2.0 : ftmp;
-                ftmp = (ftmp < -1.0) ? -1.0 : ftmp;
-                *outptr = (signed char) ftmp;
-                }
+    	polclip_min = -1.0;
+    	polclip_max = 2.0;
+    }
+    if (poln < numunsigned) { // i.e. no negs needed        
+        for (jj = 0 ; jj < nchan ; jj++, sptr++, optr++, inptr++, outptr++) {
+            float ftmp = (*inptr - *optr) / *sptr + 0.5; // fills last 0.5 of dynamic range (clip vs. rounding)
+            ftmp = (ftmp >= maxclip) ? maxclip : ftmp;
+            ftmp = (ftmp < 0.0) ? 0.0 : ftmp;
+            *outptr = (unsigned char) ftmp;
+            }
+    } else {
+        for (jj = 0 ; jj < nchan ; jj++, sptr++, optr++, inptr++, outptr++) {
+            float ftmp = (*inptr - *optr) / *sptr + 0.5;
+            ftmp = (ftmp >= polclip_max) ? polclip_max : ftmp;
+            ftmp = (ftmp < polclip_min) ? polclip_min : ftmp;
+            *outptr = (signed char) ftmp;
             }
         }
 }
@@ -360,19 +326,74 @@ void make_subbands(struct psrfits *pfi, struct subband_info *si) {
     free(inv_sumwgts);
 }
 
-void convert_8bit_to_2bit(struct psrfits *pfi, struct subband_info *si)
+void pack_8bit_to_2bit(unsigned char *indata, unsigned char *outdata, int N)
+// PACKS into 2 bits
 // converts 8-bit indata to 2-bit outdata
 // N is total number of data points
-// originally in downsample.c
 {
-	float *indata = pfi->sub.fdata;
-	float *outdata = si->outfbuffer;
-	int N = si->buflen;
-    	int ii;
-    	for (ii = 0; ii < N / 4; ii++, outdata++) {
-        	*outdata = *indata ++ << 6;
-        	*outdata += *indata++; //(should be skipping 2, not one???)
-        }
+	unsigned char *indata  = pfi->sub.fdata;
+	unsigned char *outdata  = pfi->sub.rawdata;
+    int ii;
+    for (ii = 0; ii < N / 4; ii++, outdata++) {
+        *outdata = *indata++ << 6;
+        *outdata |= *indata++ << 4;
+        *outdata |= *indata++ << 2;
+        *outdata |= *indata++;
+    }
+}
+
+void pack_2bit_to_8bit(unsigned char *indata, unsigned char *outdata, int N)
+// This converts 2-bit indata to 8-bit outdata
+// N is the total number of data points
+{
+    int ii;
+    unsigned char *indata  = pfi->sub.rawdata;
+    unsigned char *outdata  = pfi->sub.fdata;
+    // Convert all the data from 2-bit to 8-bit
+    for (ii = 0 ; ii < N / 4 ; ii++, indata++) {
+        *outdata++ = *indata >> 6;   
+        *outdata++ = (*indata >> 4) & 0x03;
+        *outdata++ = (*indata >> 2) & 0x03;
+        *outdata++ = *indata & 0x03;
+    }
+}
+
+void s_pack_2bit_to_8bit(char *indata, char *outdata, int N)
+// NEED TO EDIT SIGNED FUNCTIONS BEFORE USE; specify in/out as signed char, etc.
+// This converts 2-bit indata to 8-bit outdata
+// N is the total number of data points
+{
+    int ii;
+    // This provides automatic sign extension (via a bitfield)
+    // which is essential for twos complement signed numbers
+    // https://graphics.stanford.edu/~seander/bithacks.html#FixedSignExtend
+    struct {signed char x:2;} stmp;
+
+    // Convert all the data from 2-bit to 8-bit
+    for (ii = 0 ; ii < N / 4 ; ii++, indata++) {
+        stmp.x = *indata >> 6;
+        *outdata++ = stmp.x;
+        stmp.x = ((*indata >> 4) & 0x03);
+        *outdata++ = stmp.x;
+        stmp.x = ((*indata >> 2) & 0x03);
+        *outdata++ = stmp.x;
+        stmp.x = (*indata & 0x03);
+        *outdata++ = stmp.x;
+    }
+}
+
+void s_pack_8bit_to_2bit(char *indata, char *outdata, int N)
+// NEED TO EDIT SIGNED FUNCTIONS BEFORE USE 
+// converts 8-bit indata to 2-bit outdata
+// N is total number of data points
+{
+    int ii;
+    for (ii = 0; ii < N / 4; ii++, outdata++) {
+        *outdata = (*indata++ & 0x03) << 6;
+        *outdata |= (*indata++ & 0x03) << 4;
+        *outdata |= (*indata++ & 0x03) << 2;
+        *outdata |= *indata++ & 0x03;
+    }
 }
 
 void init_subbanding(struct psrfits *pfi,
@@ -646,6 +667,12 @@ int main(int argc, char *argv[]) {
         //print_raw_chan_stats(pfi.sub.data, pfi.hdr.nsblk, 
         //                     pfi.hdr.nchan, pfi.hdr.npol);
 
+        // if the input data isn't 8 bit, unpack:
+        if (pfi.nbits == 2)
+        	pack_2bit_to_8bit(&pfi, &si);
+        //if (pfi.nbits == 4)
+        	//***NEED TO ADD THIS FEATURE***
+
         // Now create the subbanded row in the output buffer
         make_subbands(&pfi, &si);
 
@@ -666,8 +693,8 @@ int main(int argc, char *argv[]) {
         //print_raw_chan_stats(pfo.sub.data, pfo.hdr.nsblk / pfo.hdr.ds_time_fact,  
         //                     pfo.hdr.nchan / pfo.hdr.ds_freq_fact, pfo.hdr.npol);
 
-	// Clip the extra bits(?)
-	convert_8bit_to_2bit(&pfi, &si);
+		// pack into 2 bits
+		pack_8bit_to_2bit(&pfi, &si);
 
         // Write the new row to the output file
         pfo.sub.offs = (pfo.tot_rows+0.5) * pfo.sub.tsubint;
@@ -695,3 +722,4 @@ int main(int argc, char *argv[]) {
     if (rv>100) { fits_report_error(stderr, rv); }
     exit(0);
 }
+

@@ -423,6 +423,9 @@ void init_subbanding(struct psrfits *pfi, struct psrfits *pfo,
     
     // If -nsub is not set, do no subbanding
     if (!cmd->nsubP) cmd->nsub = pfi->hdr.nchan;
+    // Don't change the number of output bits unless we explicitly ask to
+    if (!cmd->outbitsP) cmd->outbits = pfi->hdr.nbits;
+
     si->nsub = cmd->nsub;
     si->nchan = pfi->hdr.nchan;
     si->npol = pfi->hdr.npol;
@@ -523,6 +526,12 @@ void init_subbanding(struct psrfits *pfi, struct psrfits *pfo,
     
     // Now start setting values for the output arrays
     *pfo = *pfi;
+
+    // We are changing the number of bits in the data
+    if (pfi->hdr.nbits != cmd->outbits) {
+        pfo->hdr.nbits = cmd->outbits;
+    }
+
     // Determine the length of the outputfiles to use
     if (cmd->filetimeP) {
         pfo->rows_per_file = 10 * \
@@ -566,7 +575,7 @@ void init_subbanding(struct psrfits *pfi, struct psrfits *pfo,
     pfo->sub.rawdata = (unsigned char *)malloc(si->nsub * si->npol * si->buflen);
     if (pfo->hdr.nbits!=8) {
         pfo->sub.data = (unsigned char *)malloc(si->nsub * si->npol * si->buflen *
-                                                (8 / pfi->hdr.nbits));
+                                                (8 / pfo->hdr.nbits));
     } else {
         pfo->sub.data = pfo->sub.rawdata;
     }

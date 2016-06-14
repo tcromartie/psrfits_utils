@@ -107,26 +107,17 @@ void new_scales_and_offsets(struct psrfits *pfo, int numunsigned, Cmdline *cmd) 
     float target_avg, target_std;
 
     if (cmd->stdev == 0.0) {
-    	if (pfo->hdr.nbits == 8) {
-    		target_std = 20.0;
-    	}
-    	if (pfo->hdr.nbits == 4) {
-    		target_std = 5.0;
-    	}
-    	if (pfo->hdr.nbits == 2) {
-    		target_std = 0.7;
-    	}
+        // Set these to give ~6-sigma of total gaussian
+        // variation across the full range of values
+        // The numerator is (255.0, 15.0, 3.0) for (8, 4, 2) bits
+        target_std = ((1 << pfo->hdr.nbits) - 1.0) / 6.0;
     }
     if (cmd->target_avg == 1000.0) {
-    	if (pfo->hdr.nbits == 8) {
-    		target_avg = 128.0 - 1.0 * target_std;
-    	}
-    	if (pfo->hdr.nbits == 4) {
-    		target_avg = 8.0 - 0.5 * target_std;
-    	}
-    	if (pfo->hdr.nbits == 2) {
-    		target_std = 2.0 - 0.5 * target_std;
-    	}
+        // Set these slightly below the midpoints to
+        // allow us more headroom for RFI
+        // The 1st term is (127.5, 7.5, 1.5) for (8, 4, 2) bits
+        target_avg = ((1 << (pfo->hdr.nbits - 1)) - 0.5) \
+            - 0.5 * target_std;
     }
 
     for (poln = 0 ; poln < npoln ; poln++) {
@@ -237,9 +228,9 @@ int get_current_row(struct psrfits *pfi, struct subband_info *si) {
     print_percent_complete(pfi->rownum, pfi->rows_per_file, 
                            pfi->rownum==1 ? 1 : 0);
 
-#if 0
+//#if 0
     printf("row %d\n", pfi->rownum);
-#endif
+//#endif
 
     if (num_pad_blocks==0) {  // Try to read the PSRFITS file
 
@@ -258,12 +249,12 @@ int get_current_row(struct psrfits *pfi, struct subband_info *si) {
                 num_pad_blocks = (int)(dnum_blocks + 1e-7);
                 pfi->rownum--;   // Will re-read when no more padding
                 pfi->tot_rows--; // Only count "real" rows towards tot_rows
-#if 1
+//#if 1
                 printf("At row %d, found %d dropped rows.\n", 
                        pfi->rownum, num_pad_blocks);
                 printf("Adding a missing row (#%d) of padding to the subbands.\n", 
                        pfi->tot_rows);
-#endif        
+//#endif        
                 pfi->N -= pfi->hdr.nsblk;  // Will be re-added below for padding
             }
             // Now fill the main part of si->fbuffer with the chan_avgs so that
@@ -640,8 +631,6 @@ int main(int argc, char *argv[]) {
     struct subband_info si;
     int stat=0, padding=0, userN=0;
     
-    printf("testestest");
-    
     // Call usage() if we have no command line arguments
     if (argc == 1) {
         Program = argv[0];
@@ -650,12 +639,11 @@ int main(int argc, char *argv[]) {
     }
     
     // Parse the command line using the excellent program Clig
-    printf("parsing command line");
     cmd = parseCmdline(argc, argv);
 
     // Open the input PSRFITs files
     psrfits_set_files(&pfi, cmd->argc, cmd->argv);
-    printf("Set Files");
+
     // Use the dynamic filename allocation
     if (pfi.numfiles==0) pfi.filenum = cmd->startfile;
     pfi.tot_rows = pfi.N = pfi.T = pfi.status = 0;
@@ -678,7 +666,6 @@ int main(int argc, char *argv[]) {
     // Initialize the subbanding
     // (including reading the first row of data and
     //  putting it in si->fbuffer)
-    printf("Initializing Subbanding");
     init_subbanding(&pfi, &pfo, &si, cmd);
 
     if (cmd->outputbasenameP)
@@ -707,8 +694,18 @@ int main(int argc, char *argv[]) {
         //if (pfi.hdr.nbits == 4)
         //***NEED TO ADD THIS FEATURE***
 
-        // Now create the subbanded row in the output buffer
-        make_subbands(&pfi, &si);
+        if ((pfo.hdr.ds_time_fact == 1) && 
+            (pfo.hdr.ds_freq_fact == 1)) {
+            // No subbanding is needed, so just copy the float buffer
+            // This is useful if we are just changing the number of bits
+            // Could do it without a copy by simply exchanging pointers
+            // to the fdata buffers in pfo and pfi...
+            memcpy(pfo.sub.fdata, pfi.sub.fdata,
+                   pfi.hdr.nsblk * pfi.hdr.npol * pfi.hdr.nchan * sizeof(float));
+        } else {
+            // Now create the subbanded row in the output buffer
+            make_subbands(&pfi, &si);
+        }
 
         // Output only Stokes I (in place via floats)
         if (pfo.hdr.onlyI && pfo.hdr.npol==4)
@@ -734,6 +731,9 @@ int main(int argc, char *argv[]) {
         // Write the new row to the output file
         pfo.sub.offs = (pfo.tot_rows+0.5) * pfo.sub.tsubint;
         psrfits_write_subint(&pfo);
+
+        printf("inrow = %d  outrow = %d  status = %d  padding = %d\n", 
+               pfi.rownum, pfo.rownum, stat, padding);
 
         // Break out of the loop here if stat is set
         if (stat) break;

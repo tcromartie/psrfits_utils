@@ -616,7 +616,9 @@ int main(int argc, char *argv[]) {
     struct psrfits pfi, pfo, pf;
     struct subband_info si;
     int stat=0, padding=0, userN=0;
-
+    
+    printf("testestest");
+    
     // Call usage() if we have no command line arguments
     if (argc == 1) {
         Program = argv[0];
@@ -625,10 +627,12 @@ int main(int argc, char *argv[]) {
     }
     
     // Parse the command line using the excellent program Clig
+    printf("parsing command line");
     cmd = parseCmdline(argc, argv);
 
     // Open the input PSRFITs files
     psrfits_set_files(&pfi, cmd->argc, cmd->argv);
+    printf("Set Files");
     // Use the dynamic filename allocation
     if (pfi.numfiles==0) pfi.filenum = cmd->startfile;
     pfi.tot_rows = pfi.N = pfi.T = pfi.status = 0;
@@ -651,6 +655,7 @@ int main(int argc, char *argv[]) {
     // Initialize the subbanding
     // (including reading the first row of data and
     //  putting it in si->fbuffer)
+    printf("Initializing Subbanding");
     init_subbanding(&pfi, &pfo, &si, cmd);
 
     if (cmd->outputbasenameP)

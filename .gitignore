@@ -22,6 +22,8 @@ config/ltsugar.m4
 config/ltversion.m4
 config/lt~obsolete.m4
 config/missing
+config/ar-lib
+config/compile
 configure
 fold_psrfits
 libtool

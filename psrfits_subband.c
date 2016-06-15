@@ -518,15 +518,8 @@ void init_subbanding(struct psrfits *pfi, struct psrfits *pfo,
     *pfo = *pfi;
 
     // We are changing the number of bits in the data
-    if (pfi->hdr.nbits != cmd->outbits) {
-        int status = 0, colnum;
-        // We need to modify the FITS vector length appropriately
-        fits_get_colnum(pfo->fptr, 0, "DATA", &colnum, &status);
-        if (status>100) { fits_report_error(stderr, status); }
-        fits_modify_vector_len(pfo->fptr, colnum,
-                               pfo->sub.bytes_per_subint, &status);
-        if (status>100) { fits_report_error(stderr, status); }
-    }
+    if (pfi->hdr.nbits != cmd->outbits)
+        pfo->hdr.nbits = cmd->outbits;
 
     // Determine the length of the outputfiles to use
     if (cmd->filetimeP) {
@@ -545,6 +538,7 @@ void init_subbanding(struct psrfits *pfi, struct psrfits *pfo,
         pfo->rows_per_file = pfi->rows_per_file * si->chan_per_sub * 
             cmd->dstime * (cmd->onlyIP ? 4 : 1);
     }
+
     pfo->filenum = 0; // This causes the output files to be created
     pfo->filename[0] = '\0';
     pfo->rownum = 1;

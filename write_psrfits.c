@@ -283,8 +283,9 @@ int psrfits_create(struct psrfits *pf) {
         fits_modify_vector_len(pf->fptr, 17, lltmp, status); // DATA
         // Update the TDIM field for the data column
         if (mode==search)
-            sprintf(ctmp, "(1,%d,%d,%d)", out_nchan, out_npol, out_nsblk);
-        else if (mode==fold) 
+            sprintf(ctmp, "(1,%d,%d,%d)", out_nchan, out_npol,
+                    out_nsblk/(8/hdr->nbits));
+        else if (mode==fold)
             sprintf(ctmp, "(%d,%d,%d,1)", hdr->nbin, out_nchan, out_npol);
         fits_update_key(pf->fptr, TSTRING, "TDIM17", ctmp, NULL, status);
     }

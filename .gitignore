@@ -4,6 +4,7 @@
 *.lo
 *.la
 *~
+*.fits
 Makefile
 Makefile.in
 aclocal.m4

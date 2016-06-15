@@ -106,18 +106,25 @@ void new_scales_and_offsets(struct psrfits *pfo, int numunsigned, Cmdline *cmd) 
     const int bufwid = npoln * nchan;
     float target_avg, target_std;
 
-    if (cmd->stdev == 0.0) {
+    if (cmd->tgtstd == 0.0) {
         // Set these to give ~6-sigma of total gaussian
         // variation across the full range of values
         // The numerator is (255.0, 15.0, 3.0) for (8, 4, 2) bits
         target_std = ((1 << pfo->hdr.nbits) - 1.0) / 6.0;
-    }
-    if (cmd->target_avg == 1000.0) {
+    } 
+    else {
+        target_std = cmd->tgtstd;
+    }  
+    
+    if (cmd->tgtavg == 1000.0) {
         // Set these slightly below the midpoints to
         // allow us more headroom for RFI
         // The 1st term is (127.5, 7.5, 1.5) for (8, 4, 2) bits
         target_avg = ((1 << (pfo->hdr.nbits - 1)) - 0.5) \
             - 0.5 * target_std;
+    }
+    else {
+	target_avg = cmd->tgtavg;
     }
 
     for (poln = 0 ; poln < npoln ; poln++) {

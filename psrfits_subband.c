@@ -175,18 +175,17 @@ void un_scale_and_offset_data(struct psrfits *pf, int numunsigned)
     const int nchan = pf->hdr.nchan / pf->hdr.ds_freq_fact;
     const int npoln = (pf->hdr.onlyI) ? 1 : pf->hdr.npol;
     const float uclip_min = 0.0;
-    float uclip_max, sclip_min, sclip_max;
+    // The following is (255.0, 15.0, 3.0) for (8, 4, 2) bits
+    const float uclip_max = ((1 << pf->hdr.nbits) - 1.0);
+    float sclip_min, sclip_max;
     
     if (pf->hdr.nbits == 8) {
-        uclip_max = 255.0;
         sclip_min = -128.0;
         sclip_max = 127.0;
     } else if (pf->hdr.nbits == 4) {
-        uclip_max = 16.0;
         sclip_min = -8.0;
         sclip_max = 7.0;
     } else if (pf->hdr.nbits == 2) {
-        uclip_max = 3.0;
         sclip_min = -2.0;
         sclip_max = 1.0;
     }
@@ -228,9 +227,9 @@ int get_current_row(struct psrfits *pfi, struct subband_info *si) {
     print_percent_complete(pfi->rownum, pfi->rows_per_file, 
                            pfi->rownum==1 ? 1 : 0);
 
-//#if 0
+#if 0
     printf("row %d\n", pfi->rownum);
-//#endif
+#endif
 
     if (num_pad_blocks==0) {  // Try to read the PSRFITS file
 
@@ -249,12 +248,12 @@ int get_current_row(struct psrfits *pfi, struct subband_info *si) {
                 num_pad_blocks = (int)(dnum_blocks + 1e-7);
                 pfi->rownum--;   // Will re-read when no more padding
                 pfi->tot_rows--; // Only count "real" rows towards tot_rows
-//#if 1
+#if 1
                 printf("At row %d, found %d dropped rows.\n", 
                        pfi->rownum, num_pad_blocks);
                 printf("Adding a missing row (#%d) of padding to the subbands.\n", 
                        pfi->tot_rows);
-//#endif        
+#endif        
                 pfi->N -= pfi->hdr.nsblk;  // Will be re-added below for padding
             }
             // Now fill the main part of si->fbuffer with the chan_avgs so that
@@ -520,7 +519,13 @@ void init_subbanding(struct psrfits *pfi, struct psrfits *pfo,
 
     // We are changing the number of bits in the data
     if (pfi->hdr.nbits != cmd->outbits) {
-        pfo->hdr.nbits = cmd->outbits;
+        int status = 0, colnum;
+        // We need to modify the FITS vector length appropriately
+        fits_get_colnum(pfo->fptr, 0, "DATA", &colnum, &status);
+        if (status>100) { fits_report_error(stderr, status); }
+        fits_modify_vector_len(pfo->fptr, colnum,
+                               pfo->sub.bytes_per_subint, &status);
+        if (status>100) { fits_report_error(stderr, status); }
     }
 
     // Determine the length of the outputfiles to use
@@ -535,6 +540,7 @@ void init_subbanding(struct psrfits *pfi, struct psrfits *pfo,
                             pfo->hdr.npol * pfo->hdr.nsblk) / \
             (8 * si->chan_per_sub * cmd->dstime * (cmd->onlyIP ? 4 : 1));
         pfo->rows_per_file = filelen / bytes_per_subint;
+        pfo->sub.bytes_per_subint = bytes_per_subint;
     } else {  // By default, keep the filesize roughly constant
         pfo->rows_per_file = pfi->rows_per_file * si->chan_per_sub * 
             cmd->dstime * (cmd->onlyIP ? 4 : 1);
@@ -731,9 +737,6 @@ int main(int argc, char *argv[]) {
         // Write the new row to the output file
         pfo.sub.offs = (pfo.tot_rows+0.5) * pfo.sub.tsubint;
         psrfits_write_subint(&pfo);
-
-        printf("inrow = %d  outrow = %d  status = %d  padding = %d\n", 
-               pfi.rownum, pfo.rownum, stat, padding);
 
         // Break out of the loop here if stat is set
         if (stat) break;

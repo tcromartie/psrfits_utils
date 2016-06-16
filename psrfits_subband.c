@@ -719,7 +719,8 @@ int main(int argc, char *argv[]) {
 
         // Compute new scales and offsets so that we can pack
         // into 8-bits reliably
-        new_scales_and_offsets(&pfo, si.numunsigned, cmd);
+        if (pfo.rownum == 1)
+            new_scales_and_offsets(&pfo, si.numunsigned, cmd);
 
         // Convert the floats back to bytes in the output array
         un_scale_and_offset_data(&pfo, si.numunsigned);

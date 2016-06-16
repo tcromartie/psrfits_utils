@@ -5,6 +5,7 @@
 *.la
 *~
 *.fits
+*GBNCC*
 Makefile
 Makefile.in
 aclocal.m4

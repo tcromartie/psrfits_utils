@@ -27,8 +27,8 @@ Float  -filelen  filelen  {Desired length of the resulting files in GB} \
     -r 0.0 1000.0
 Float -tgtstd tgtstd {Target standard dev will be set in code based on outbits} \
     -r 0.0 1000.0 -d 0.0
-Float -tgtavg tgtavg {Target average for converted data; set in code based on outbits} \
-    -r 0.0 1000.0 -d 1000.0
+Float -tgtavg tgtavg {Target average for converted UNSIGNED data; set in code based on outbits} \
+    -r 0.0 10000.0 -d 0.0
 Flag   -bytes    bytes    {Make the raw data unsigned chars instead of signed shorts}
 Flag   -onlyI    onlyI    {Only output total intensity data}
 String -weights  wgtsfile {Filename containing ASCII list of channels and weights to use}

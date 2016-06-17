@@ -123,14 +123,14 @@ void new_scales_and_offsets(struct psrfits *pfo, int numunsigned, Cmdline *cmd) 
     }
 
     for (poln = 0 ; poln < npoln ; poln++) {
-        float target_avg = (poln < numunsigned) ? target_avg : 0.0;
+        float tgtavg = (poln < numunsigned) ? target_avg : 0.0;
         float *out_scls = pfo->sub.dat_scales + poln * nchan;
         float *out_offs = pfo->sub.dat_offsets + poln * nchan;
         for (ii = 0 ; ii < nchan ; ii++) {
             float *fptr = pfo->sub.fdata + poln * nchan + ii;
             avg_std(fptr, nspec, &avg, &std, bufwid);
             out_scls[ii] = std / target_std;
-            out_offs[ii] = avg - (target_avg * out_scls[ii]);
+            out_offs[ii] = avg - (tgtavg * out_scls[ii]);
         }
     }
 }

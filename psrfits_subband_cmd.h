@@ -33,10 +33,6 @@ typedef struct s_Cmdline {
   char outbitsP;
   int outbits;
   int outbitsC;
-  /***** -edge_chan: Number of channels on each side of band to zap */
-  char edge_chanP;
-  int edge_chan;
-  int edge_chanC;
   /***** -filetime: Desired length of the resulting files in sec */
   char filetimeP;
   float filetime;
@@ -45,22 +41,24 @@ typedef struct s_Cmdline {
   char filelenP;
   float filelen;
   int filelenC;
-  /***** -tgtstd: Target standard dev will be set in code based on outbits */
+  /***** -tgtstd: Target stdev. If 0, set in code based on outbits */
   char tgtstdP;
   float tgtstd;
   int tgtstdC;
-  /***** -tgtavg: Target average for converted data; set in code based on outbits */
+  /***** -tgtavg: Target avg for UNSIGNED data. If 0, set in code based on outbits */
   char tgtavgP;
   float tgtavg;
   int tgtavgC;
-  /***** -bytes: Make the raw data unsigned chars instead of signed shorts */
-  char bytesP;
   /***** -onlyI: Only output total intensity data */
   char onlyIP;
   /***** -weights: Filename containing ASCII list of channels and weights to use */
   char wgtsfileP;
   char* wgtsfile;
   int wgtsfileC;
+  /***** -bandpass: Filename containing ASCII list of channels, avgs, stdevs to use */
+  char bandpassfileP;
+  char* bandpassfile;
+  int bandpassfileC;
   /***** -o: Basename for the output files */
   char outputbasenameP;
   char* outputbasename;
@@ -76,6 +74,8 @@ typedef struct s_Cmdline {
 extern char *Program;
 extern void usage(void);
 extern /*@shared*/Cmdline *parseCmdline(int argc, char **argv);
+
+extern void showOptionValues(void);
 
 #endif
 

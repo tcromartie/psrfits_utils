@@ -538,7 +538,8 @@ void init_subbanding(struct psrfits *pfi, struct psrfits *pfo,
         pfo->sub.bytes_per_subint = bytes_per_subint;
     } else {  // By default, keep the filesize roughly constant
         pfo->rows_per_file = pfi->rows_per_file * si->chan_per_sub *
-            cmd->dstime * (cmd->onlyIP ? 4 : 1);
+            cmd->dstime * (cmd->onlyIP ? 4 : 1) *
+            pfi->hdr.nbits / pfo->hdr.nbits;
     }
 
     pfo->filenum = 0; // This causes the output files to be created

@@ -18,6 +18,13 @@ extern void split_path_file(char *input, char **path, char **file);
 extern void get_stokes_I(struct psrfits *pf);
 extern void downsample_time(struct psrfits *pf);
 
+extern void pf_pack_8bit_to_2bit(struct psrfits *pf, int numunsigned);
+extern void pf_pack_8bit_to_4bit(struct psrfits *pf, int numunsigned);
+extern void pf_unpack_2bit_to_8bit(struct psrfits *pf, int numunsigned);
+extern void pf_unpack_4bit_to_8bit(struct psrfits *pf, int numunsigned);
+
+void read_bandpass(char *filenm, int *numchan, float **avgs, float **stds);
+
 struct subband_info {
     int nsub;
     int nchan;
@@ -106,6 +113,7 @@ void new_scales_and_offsets(struct psrfits *pfo, int numunsigned, Cmdline *cmd) 
     const int bufwid = npoln * nchan;
     // Target avg is for unsigned; defaults to 0
     float target_avg = cmd->tgtavg, target_std = cmd->tgtstd;
+    float *avgs = NULL, *stds = NULL;
 
     if (cmd->tgtstd == 0.0) {
         // Set these to give ~6-sigma of total gaussian
@@ -122,17 +130,40 @@ void new_scales_and_offsets(struct psrfits *pfo, int numunsigned, Cmdline *cmd) 
             - 0.5 * target_std;
     }
 
+    if (cmd->bandpassfileP) {
+        int N;
+        read_bandpass(cmd->bandpassfile, &N, &avgs, &stds);
+        if (N != nchan) {
+            printf("Error!:  Problem reading %d bandpass from '%s'\n\n",
+                   N, cmd->bandpassfile);
+            exit(-1);
+        }
+        printf("Overriding input channel statistics with those in '%s'\n",
+               cmd->bandpassfile);
+    } else {
+        avgs = (float *)malloc(nchan * sizeof(float));
+        stds = (float *)malloc(nchan * sizeof(float));
+    }
+
     for (poln = 0 ; poln < npoln ; poln++) {
         float tgtavg = (poln < numunsigned) ? target_avg : 0.0;
         float *out_scls = pfo->sub.dat_scales + poln * nchan;
         float *out_offs = pfo->sub.dat_offsets + poln * nchan;
+        if (!cmd->bandpassfileP) {
+            for (ii = 0 ; ii < nchan ; ii++) {
+                float *fptr = pfo->sub.fdata + poln * nchan + ii;
+                avg_std(fptr, nspec, &avg, &std, bufwid);
+                avgs[ii] = avg;
+                stds[ii] = std;
+            }
+        }
         for (ii = 0 ; ii < nchan ; ii++) {
-            float *fptr = pfo->sub.fdata + poln * nchan + ii;
-            avg_std(fptr, nspec, &avg, &std, bufwid);
-            out_scls[ii] = std / target_std;
-            out_offs[ii] = avg - (tgtavg * out_scls[ii]);
+            out_scls[ii] = stds[ii] / target_std;
+            out_offs[ii] = avgs[ii] - (tgtavg * out_scls[ii]);
         }
     }
+    free(avgs);
+    free(stds);
 }
 
 void new_weights(struct psrfits *inpf, struct psrfits *outpf)
@@ -325,88 +356,7 @@ void make_subbands(struct psrfits *pfi, struct subband_info *si) {
     free(inv_sumwgts);
 }
 
-void pack_8bit_to_2bit(struct psrfits *pf)
-// packs (i.e. converts) 8-bit indata to 2-bit outdata
-// TODO: make this work for more than 1 polarization!
-{
-    int ii, jj;
-    unsigned char *indata = pf->sub.data;
-    unsigned char *outdata = pf->sub.rawdata;
-    if (pf->hdr.npol > 1) {
-        printf("Error!:  packing/unpacking only works for 8 bit data currently!\n\n");
-        exit(-1);
-    }
-    for (ii = 0; ii < pf->hdr.nsblk; ii++) {
-        for (jj = 0; jj < pf->hdr.nchan / 4; jj++, outdata++) {
-            *outdata = *indata++ << 6;
-            *outdata |= *indata++ << 4;
-            *outdata |= *indata++ << 2;
-            *outdata |= *indata++;
-        }
-    }
-}
 
-void unpack_2bit_to_8bit(struct psrfits *pf)
-// unpacks (i.e. converts) 2-bit indata to 8-bit outdata
-// TODO: make this work for more than 1 polarization!
-{
-    int ii, jj;
-    unsigned char *indata = pf->sub.rawdata;
-    unsigned char *outdata = pf->sub.data;
-    if (pf->hdr.npol > 1) {
-        printf("Error!:  packing/unpacking only works for 8 bit data currently!\n\n");
-        exit(-1);
-    }
-    for (ii = 0; ii < pf->hdr.nsblk; ii++) {
-        for (jj = 0; jj < pf->hdr.nchan / 4; jj++, outdata++) {
-            *outdata++ = *indata >> 6;
-            *outdata++ = (*indata >> 4) & 0x03;
-            *outdata++ = (*indata >> 2) & 0x03;
-            *outdata++ = *indata & 0x03;
-        }
-    }
-}
-
-/*void s_pack_2bit_to_8bit(struct psrfits *pfi, struct subband_info *si)
-// NEED TO EDIT SIGNED FUNCTIONS BEFORE USE; specify in/out as signed char, etc.
-// This converts 2-bit indata to 8-bit outdata
-// N is the total number of data points
-{
-    int N = pfi->hdr.nchan;
-    int ii;
-    // This provides automatic sign extension (via a bitfield)
-    // which is essential for twos complement signed numbers
-    // https://graphics.stanford.edu/~seander/bithacks.html#FixedSignExtend
-    struct {signed char x:2;} stmp;
-
-    // Convert all the data from 2-bit to 8-bit
-    for (ii = 0 ; ii < N / 4 ; ii++, indata++) {
-        stmp.x = *indata >> 6;
-        *outdata++ = stmp.x;
-        stmp.x = ((*indata >> 4) & 0x03);
-        *outdata++ = stmp.x;
-        stmp.x = ((*indata >> 2) & 0x03);
-        *outdata++ = stmp.x;
-        stmp.x = (*indata & 0x03);
-        *outdata++ = stmp.x;
-    }
-}
-
-void s_pack_8bit_to_2bit(struct psrfits *pfi, struct subband_info *si)
-// NEED TO EDIT SIGNED FUNCTIONS BEFORE USE
-// converts 8-bit indata to 2-bit outdata
-// N is total number of data points
-{
-    int N = pfi->hdr.nchan;
-    int ii;
-    for (ii = 0; ii < N / 4; ii++, outdata++) {
-        *outdata = (*indata++ & 0x03) << 6;
-        *outdata |= (*indata++ & 0x03) << 4;
-        *outdata |= (*indata++ & 0x03) << 2;
-        *outdata |= *indata++ & 0x03;
-    }
-}
-*/
 void init_subbanding(struct psrfits *pfi, struct psrfits *pfo,
                      struct subband_info *si, Cmdline *cmd)
 {
@@ -602,26 +552,67 @@ void read_weights(char *filenm, int *numchan, float **weights)
     // Read the input file once to count the lines
     N = 0;
     while (!feof(infile)){
-        fgets(line, 80, infile);
-        if (line[0]!='#') {
-            sscanf(line, "%d %f\n", &chan, &wgt);
-            N++;
+        if (fgets(line, 80, infile) != NULL) {
+            if (line[0]!='#') {
+                sscanf(line, "%d %f\n", &chan, &wgt);
+                N++;
+            }
         }
     }
-    N--;
     *numchan = N;
 
     // Allocate the output arrays
     *weights = (float *)malloc(N * sizeof(float));
 
-    // Rewind and read the EVENTs for real
+    // Rewind and read the lines for real
     rewind(infile);
     ii = 0;
     while (ii < N) {
-        fgets(line, 80, infile);
-        if (line[0]!='#') {
-            sscanf(line, "%d %f\n", &chan, (*weights)+ii);
-            ii++;
+        if (fgets(line, 80, infile) != NULL) {
+            if (line[0]!='#') {
+                sscanf(line, "%d %f\n", &chan, (*weights)+ii);
+                ii++;
+            }
+        }
+    }
+    fclose(infile);
+}
+
+
+void read_bandpass(char *filenm, int *numchan, float **avgs, float **stds)
+{
+    FILE *infile;
+    int ii, N, chan;
+    float freq, avg, std;
+    char line[80], *ret;
+
+    infile = fopen(filenm, "r");
+
+    // Read the input file once to count the lines
+    N = 0;
+    while (!feof(infile)){
+        if (fgets(line, 80, infile) != NULL) {
+            if (line[0]!='#') {
+                sscanf(line, "%d %f %f %f\n", &chan, &freq, &avg, &std);
+                N++;
+            }
+        }
+    }
+    *numchan = N;
+
+    // Allocate the output arrays
+    *avgs = (float *)malloc(N * sizeof(float));
+    *stds = (float *)malloc(N * sizeof(float));
+
+    // Rewind and read the lines for real
+    rewind(infile);
+    ii = 0;
+    while (ii < N) {
+        if (fgets(line, 80, infile) != NULL) {
+            if (line[0]!='#') {
+                sscanf(line, "%d %f %f %f\n", &chan, &freq, (*avgs)+ii, (*stds)+ii);
+                ii++;
+            }
         }
     }
     fclose(infile);
@@ -693,9 +684,9 @@ int main(int argc, char *argv[]) {
 
         // if the input data isn't 8 bit, unpack:
         if (pfi.hdr.nbits == 2)
-        	unpack_2bit_to_8bit(&pfi);
-        //if (pfi.hdr.nbits == 4)
-        //***NEED TO ADD THIS FEATURE***
+            pf_unpack_2bit_to_8bit(&pfi, si.numunsigned);
+        else if (pfi.hdr.nbits == 4)
+            pf_unpack_4bit_to_8bit(&pfi, si.numunsigned);
 
         if ((pfo.hdr.ds_time_fact == 1) &&
             (pfo.hdr.ds_freq_fact == 1)) {
@@ -728,9 +719,11 @@ int main(int argc, char *argv[]) {
         //print_raw_chan_stats(pfo.sub.data, pfo.hdr.nsblk / pfo.hdr.ds_time_fact,
         //                     pfo.hdr.nchan / pfo.hdr.ds_freq_fact, pfo.hdr.npol);
 
-        // pack into 2 bits
+        // pack into 2 or 4 bits if needed
         if (pfo.hdr.nbits == 2)
-            pack_8bit_to_2bit(&pfo);
+            pf_pack_8bit_to_2bit(&pfo, si.numunsigned);
+        else if (pfo.hdr.nbits == 4)
+            pf_pack_8bit_to_4bit(&pfo, si.numunsigned);
 
         // Write the new row to the output file
         pfo.sub.offs = (pfo.tot_rows+0.5) * pfo.sub.tsubint;

@@ -17,6 +17,7 @@ extern void avg_std(float *x, int n, double *mean, double *std, int stride);
 extern void split_path_file(char *input, char **path, char **file);
 extern void get_stokes_I(struct psrfits *pf);
 extern void downsample_time(struct psrfits *pf);
+void read_bandpass(char *filenm, int *numchan, float **avgs, float **stds);
 
 struct subband_info {
     int nsub;
@@ -106,6 +107,7 @@ void new_scales_and_offsets(struct psrfits *pfo, int numunsigned, Cmdline *cmd) 
     const int bufwid = npoln * nchan;
     // Target avg is for unsigned; defaults to 0
     float target_avg = cmd->tgtavg, target_std = cmd->tgtstd;
+    float *avgs = NULL, *stds = NULL;
 
     if (cmd->tgtstd == 0.0) {
         // Set these to give ~6-sigma of total gaussian
@@ -122,17 +124,40 @@ void new_scales_and_offsets(struct psrfits *pfo, int numunsigned, Cmdline *cmd) 
             - 0.5 * target_std;
     }
 
+    if (cmd->bandpassfileP) {
+        int N;
+        read_bandpass(cmd->bandpassfile, &N, &avgs, &stds);
+        if (N != nchan) {
+            printf("Error!:  Problem reading %d bandpass from '%s'\n\n",
+                   N, cmd->bandpassfile);
+            exit(-1);
+        }
+        printf("Overriding input channel statistics with those in '%s'\n",
+               cmd->bandpassfile);
+    } else {
+        avgs = (float *)malloc(nchan * sizeof(float));
+        stds = (float *)malloc(nchan * sizeof(float));
+    }
+
     for (poln = 0 ; poln < npoln ; poln++) {
         float tgtavg = (poln < numunsigned) ? target_avg : 0.0;
         float *out_scls = pfo->sub.dat_scales + poln * nchan;
         float *out_offs = pfo->sub.dat_offsets + poln * nchan;
+        if (!cmd->bandpassfileP) {
+            for (ii = 0 ; ii < nchan ; ii++) {
+                float *fptr = pfo->sub.fdata + poln * nchan + ii;
+                avg_std(fptr, nspec, &avg, &std, bufwid);
+                avgs[ii] = avg;
+                stds[ii] = std;
+            }
+        }
         for (ii = 0 ; ii < nchan ; ii++) {
-            float *fptr = pfo->sub.fdata + poln * nchan + ii;
-            avg_std(fptr, nspec, &avg, &std, bufwid);
-            out_scls[ii] = std / target_std;
-            out_offs[ii] = avg - (tgtavg * out_scls[ii]);
+            out_scls[ii] = stds[ii] / target_std;
+            out_offs[ii] = avgs[ii] - (tgtavg * out_scls[ii]);
         }
     }
+    free(avgs);
+    free(stds);
 }
 
 void new_weights(struct psrfits *inpf, struct psrfits *outpf)
@@ -602,26 +627,67 @@ void read_weights(char *filenm, int *numchan, float **weights)
     // Read the input file once to count the lines
     N = 0;
     while (!feof(infile)){
-        fgets(line, 80, infile);
-        if (line[0]!='#') {
-            sscanf(line, "%d %f\n", &chan, &wgt);
-            N++;
+        if (fgets(line, 80, infile) != NULL) {
+            if (line[0]!='#') {
+                sscanf(line, "%d %f\n", &chan, &wgt);
+                N++;
+            }
         }
     }
-    N--;
     *numchan = N;
 
     // Allocate the output arrays
     *weights = (float *)malloc(N * sizeof(float));
 
-    // Rewind and read the EVENTs for real
+    // Rewind and read the lines for real
     rewind(infile);
     ii = 0;
     while (ii < N) {
-        fgets(line, 80, infile);
-        if (line[0]!='#') {
-            sscanf(line, "%d %f\n", &chan, (*weights)+ii);
-            ii++;
+        if (fgets(line, 80, infile) != NULL) {
+            if (line[0]!='#') {
+                sscanf(line, "%d %f\n", &chan, (*weights)+ii);
+                ii++;
+            }
+        }
+    }
+    fclose(infile);
+}
+
+
+void read_bandpass(char *filenm, int *numchan, float **avgs, float **stds)
+{
+    FILE *infile;
+    int ii, N, chan;
+    float freq, avg, std;
+    char line[80], *ret;
+
+    infile = fopen(filenm, "r");
+
+    // Read the input file once to count the lines
+    N = 0;
+    while (!feof(infile)){
+        if (fgets(line, 80, infile) != NULL) {
+            if (line[0]!='#') {
+                sscanf(line, "%d %f %f %f\n", &chan, &freq, &avg, &std);
+                N++;
+            }
+        }
+    }
+    *numchan = N;
+
+    // Allocate the output arrays
+    *avgs = (float *)malloc(N * sizeof(float));
+    *stds = (float *)malloc(N * sizeof(float));
+
+    // Rewind and read the lines for real
+    rewind(infile);
+    ii = 0;
+    while (ii < N) {
+        if (fgets(line, 80, infile) != NULL) {
+            if (line[0]!='#') {
+                sscanf(line, "%d %f %f %f\n", &chan, &freq, (*avgs)+ii, (*stds)+ii);
+                ii++;
+            }
         }
     }
     fclose(infile);

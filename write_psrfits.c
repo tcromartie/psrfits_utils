@@ -9,6 +9,9 @@
 
 #define DEBUGOUT 0
 
+extern void pf_pack_8bit_to_2bit(struct psrfits *pf, int numunsigned);
+extern void pf_pack_8bit_to_4bit(struct psrfits *pf, int numunsigned);
+
 // Define different obs modes
 static const int search=SEARCH_MODE, fold=FOLD_MODE;
 int psrfits_obs_mode(const char *obs_mode) {
@@ -321,6 +324,14 @@ int psrfits_write_subint(struct psrfits *pf) {
             out_nbytes /= hdr->npol;
     }
 
+    int numunsigned = hdr->npol;
+    if (hdr->npol==4) {
+        if (strncmp(hdr->poln_order, "AABBCRCI", 8)==0)
+            numunsigned = 2;
+        if (strncmp(hdr->poln_order, "IQUV", 4)==0)
+            numunsigned = 1;
+    }
+
     // Create the initial file or change to a new one if needed.
     // Stay with a single file for fold mode.
     if (pf->filenum==0 || 
@@ -356,7 +367,8 @@ int psrfits_write_subint(struct psrfits *pf) {
     fits_write_col(pf->fptr, TFLOAT, 15, row, 1, nivals, sub->dat_offsets, status);
     fits_write_col(pf->fptr, TFLOAT, 16, row, 1, nivals, sub->dat_scales, status);
     if (mode==search) {
-        if (hdr->nbits==4) pf_8bit_to_4bit(pf);
+        if (hdr->nbits==2) pf_pack_8bit_to_2bit(pf, numunsigned);
+        else if (hdr->nbits==4) pf_pack_8bit_to_4bit(pf, numunsigned);
         fits_write_col(pf->fptr, TBYTE, 17, row, 1, out_nbytes, 
                        sub->rawdata, status);
     } else if (mode==fold) { 

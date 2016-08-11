@@ -16,15 +16,14 @@ def write_bandpass(filenm, freqs, means, stdevs):
         of.write("%6d  %9.3f  %9.3f  %9.3f\n" % (ii, freq, mean, stdev))
     of.close()
 
-def plot_bandpass(filenm,freqs, means, stdevs):
+def plot_bandpass(freqs, means, stdevs):
     plt.plot(freqs, means, '-k',
              freqs, means+stdevs, '-r',
              freqs, means-stdevs, '-r')
     plt.xlabel("Frequency (MHz)")
     plt.ylabel("Relative power or Counts")
     plt.show()
-    plt.savefig(filenm+'.jpg')
-
+    
 def main():
     parser = OptionParser(usage)
     parser.add_option("-x", "--xwin", action="store_true", dest="xwin",
@@ -44,6 +43,7 @@ def main():
         print full_usage
         sys.exit(0)
 
+    htot = np.zeros(4)
     for infile in args:
         print "Processing '%s'" % (infile)
         pf = psrfits.PsrfitsFile(infile)
@@ -57,14 +57,17 @@ def main():
             specs = pf.read_subint(subint, apply_weights=opts.weights,
                                    apply_scales=not opts.nomods,
                                    apply_offsets=not opts.nomods)
+            h, b = np.histogram(specs.flatten(), bins=4)
+            htot += h
             means[ii] = specs.mean(axis=0)
             stdevs[ii] = specs.std(axis=0)
         print "%.0f%%" % (100.0)
         med_mean = np.median(means, axis=0)
         med_stdev = np.median(stdevs, axis=0)
-        outfilenm = infile+".bandpass" if opts.outfile is None else opts.outfile
         if opts.xwin:
-            plot_bandpass(outfilenm, pf.freqs, med_mean, med_stdev)
+            plot_bandpass(pf.freqs, med_mean, med_stdev)
+            print htot / htot.sum() * 100.0
+        outfilenm = infile+".bandpass" if opts.outfile is None else opts.outfile
         write_bandpass(outfilenm, pf.freqs, med_mean, med_stdev)
 
 if __name__=='__main__':

@@ -118,8 +118,8 @@ void new_scales_and_offsets(struct psrfits *pfo, int numunsigned, Cmdline *cmd) 
     if (cmd->tgtstd == 0.0) {
         // Set these to give ~6-sigma of total gaussian
         // variation across the full range of values
-        // The numerator is (255.0, 15.0, 3.0) for (8, 4, 2) bits
-        target_std = ((1 << pfo->hdr.nbits) - 1.0) / 6.0;
+        // The numerator is (256.0, 16.0, 4.0) for (8, 4, 2) bits
+        target_std = (1 << pfo->hdr.nbits) / 6.0;
     }
 
     if (cmd->tgtavg == 0.0) {
@@ -127,7 +127,7 @@ void new_scales_and_offsets(struct psrfits *pfo, int numunsigned, Cmdline *cmd) 
         // allow us more headroom for RFI
         // The 1st term is (127.5, 7.5, 1.5) for (8, 4, 2) bits
         target_avg = ((1 << (pfo->hdr.nbits - 1)) - 0.5) \
-            - 0.5 * target_std;
+            - 1.0 * target_std;
     }
 
     if (cmd->bandpassfileP) {
@@ -196,6 +196,12 @@ void fill_chans_with_avgs(int N, int samp_per_spect, float *buffer, float *avgs)
     }
 }
 
+static int cliptot_high = 0;
+static int cliptot_low = 0;
+//cliptot_high_per = (float) cliptot_high / (1450000*4096);
+static float cliptot_high_per = 0;
+static float cliptot_low_per = 0;
+
 // This routine removes the offsets from the floating point
 // data, divides by the scales, and converts (with clipping)
 // the resulting value into unsigned chars in the sub.data buffer
@@ -222,6 +228,7 @@ void un_scale_and_offset_data(struct psrfits *pf, int numunsigned)
         sclip_min = -2.0;
         sclip_max = 1.0;
     }
+    printf("Upper clipped count: %d; Lower clipped count: %d \n",cliptot_high,cliptot_low);
     for (ii = 0 ; ii < nspec ; ii++) {
         for (poln = 0 ; poln < npoln ; poln++) {
             float *sptr = pf->sub.dat_scales + poln * nchan;
@@ -230,7 +237,10 @@ void un_scale_and_offset_data(struct psrfits *pf, int numunsigned)
                 for (jj = 0 ; jj < nchan ; jj++, sptr++, optr++, inptr++, outptr++) {
                     // +0.5 fills last 0.5 of dynamic range (clip vs. rounding)
                     float ftmp = (*inptr - *optr) / *sptr + 0.5;
-                    ftmp = (ftmp >= uclip_max) ? uclip_max : ftmp;
+                    cliptot_high += (ftmp > uclip_max);
+                    cliptot_low += (ftmp < uclip_min);
+		    //cliptot_high_per = (float) cliptot_high / (1450000*4096);
+		    ftmp = (ftmp >= uclip_max) ? uclip_max : ftmp;
                     ftmp = (ftmp < uclip_min) ? uclip_min : ftmp;
                     *outptr = (unsigned char) ftmp;
                 }
@@ -244,6 +254,9 @@ void un_scale_and_offset_data(struct psrfits *pf, int numunsigned)
             }
         }
     }
+    cliptot_high_per = (float) cliptot_high * 100.0 / (float)(8192.0*4096.0*180.0);
+    cliptot_low_per = (float) cliptot_low * 100.0 / (float)(8192.0*4096.0*180.0);
+    printf("Upper clipped percentage: %f%; Lower clipped percentage: %f% \n",cliptot_high_per,cliptot_low_per);
 }
 
 int get_current_row(struct psrfits *pfi, struct subband_info *si) {
@@ -718,8 +731,9 @@ int main(int argc, char *argv[]) {
         un_scale_and_offset_data(&pfo, si.numunsigned);
         //print_raw_chan_stats(pfo.sub.data, pfo.hdr.nsblk / pfo.hdr.ds_time_fact,
         //                     pfo.hdr.nchan / pfo.hdr.ds_freq_fact, pfo.hdr.npol);
-
-        // pack into 2 or 4 bits if needed
+	//printf("Upper clipped count: %d \n",cliptot);
+        
+	// pack into 2 or 4 bits if needed
         if (pfo.hdr.nbits == 2)
             pf_pack_8bit_to_2bit(&pfo, si.numunsigned);
         else if (pfo.hdr.nbits == 4)

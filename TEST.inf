@@ -1,0 +1,25 @@
+ Data file name without suffix          =  TEST
+ Telescope used                         =  GBT
+ Instrument used                        =  GUPPI
+ Object being observed                  =  GBNCC06605
+ J2000 Right Ascension (hh:mm:ss.ssss)  =  19:35:23.1840
+ J2000 Declination     (dd:mm:ss.ssss)  =  65:56:11.7600
+ Data observed by                       =  Scott Ransom
+ Epoch of observation (MJD)             =  55179.867766203703702
+ Barycentered?           (1 yes, 0 no)  =  0
+ Number of bins in the time series      =  1474560    
+ Width of each time series bin (sec)    =  8.192e-05
+ Any breaks in the data? (1 yes, 0 no)  =  0
+ Type of observation (EM band)          =  Radio
+ Beam diameter (arcsec)                 =  2120
+ Dispersion measure (cm-3 pc)           =  0
+ Central freq of low channel (MHz)      =  300.024414062
+ Total bandwidth (MHz)                  =  100
+ Number of channels                     =  4096
+ Channel bandwidth (MHz)                =  0.0244140625
+ Data analyzed by                       =  tcromart
+ Any additional notes:
+    Project ID AGBT09C_057_40, Date: 2009-12-14T20:49:35.000.
+    1 polns were not summed.  Samples have 8 bits.
+
+

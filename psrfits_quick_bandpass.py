@@ -16,14 +16,15 @@ def write_bandpass(filenm, freqs, means, stdevs):
         of.write("%6d  %9.3f  %9.3f  %9.3f\n" % (ii, freq, mean, stdev))
     of.close()
 
-def plot_bandpass(freqs, means, stdevs):
+def plot_bandpass(filenm, freqs, means, stdevs):
     plt.plot(freqs, means, '-k',
              freqs, means+stdevs, '-r',
              freqs, means-stdevs, '-r')
     plt.xlabel("Frequency (MHz)")
     plt.ylabel("Relative power or Counts")
-    plt.show()
-    
+    #plt.show()
+    plt.savefig(filenm+'.pdf')
+ 
 def main():
     parser = OptionParser(usage)
     parser.add_option("-x", "--xwin", action="store_true", dest="xwin",
@@ -64,10 +65,10 @@ def main():
         print "%.0f%%" % (100.0)
         med_mean = np.median(means, axis=0)
         med_stdev = np.median(stdevs, axis=0)
-        if opts.xwin:
-            plot_bandpass(pf.freqs, med_mean, med_stdev)
-            print htot / htot.sum() * 100.0
         outfilenm = infile+".bandpass" if opts.outfile is None else opts.outfile
+        if opts.xwin:
+            plot_bandpass(outfilenm, pf.freqs, med_mean, med_stdev)
+            print htot / htot.sum() * 100.0
         write_bandpass(outfilenm, pf.freqs, med_mean, med_stdev)
 
 if __name__=='__main__':

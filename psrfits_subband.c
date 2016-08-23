@@ -199,7 +199,6 @@ void fill_chans_with_avgs(int N, int samp_per_spect, float *buffer, float *avgs)
 
 static int cliptot_high = 0;
 static int cliptot_low = 0;
-//cliptot_high_per = (float) cliptot_high / (1450000*4096);
 static float cliptot_high_per = 0;
 static float cliptot_low_per = 0;
 
@@ -229,7 +228,6 @@ void un_scale_and_offset_data(struct psrfits *pf, int numunsigned)
         sclip_min = -2.0;
         sclip_max = 1.0;
     }
-    // printf("Upper clipped count: %d; Lower clipped count: %d \n",cliptot_high,cliptot_low);
     for (ii = 0 ; ii < nspec ; ii++) {
         for (poln = 0 ; poln < npoln ; poln++) {
             float *sptr = pf->sub.dat_scales + poln * nchan;
@@ -240,7 +238,6 @@ void un_scale_and_offset_data(struct psrfits *pf, int numunsigned)
                     float ftmp = (*inptr - *optr) / *sptr + 0.5;
                     cliptot_high += (ftmp > uclip_max);
                     cliptot_low += (ftmp < uclip_min);
-		    //cliptot_high_per = (float) cliptot_high / (1450000*4096);
 		    ftmp = (ftmp >= uclip_max) ? uclip_max : ftmp;
                     ftmp = (ftmp < uclip_min) ? uclip_min : ftmp;
                     *outptr = (unsigned char) ftmp;
@@ -255,9 +252,6 @@ void un_scale_and_offset_data(struct psrfits *pf, int numunsigned)
             }
         }
     }
-    //cliptot_high_per = (float) cliptot_high * 100.0 / (float)(8192.0*4096.0*180.0);
-    //cliptot_low_per = (float) cliptot_low * 100.0 / (float)(8192.0*4096.0*180.0);
-    //printf("Upper clipped percentage: %f%; Lower clipped percentage: %f% \n",cliptot_high_per,cliptot_low_per);
 }
 
 int get_current_row(struct psrfits *pfi, struct subband_info *si) {
@@ -790,12 +784,6 @@ int main(int argc, char *argv[]) {
     	cliptot_high_per = (float) cliptot_high * 100.0 / (float)(8192.0*4096.0*180.0);
     	cliptot_low_per = (float) cliptot_low * 100.0 / (float)(8192.0*4096.0*180.0);
     	printf("Upper clipped percentage: %f%; Lower clipped percentage: %f% \n",cliptot_high_per,cliptot_low_per);
-	
-	FILE *fp;
-	fp = fopen("./clips.txt", "a");
-	fprintf(fp, "File: %s, Upper clipped percentage: %f%; Lower clipped percentage: %f% \n", \
-		cmd->outputbasename,cliptot_high_per,cliptot_low_per);
-	fclose(fp);
 
     rv = psrfits_close(&pfi);
     if (rv>100) { fits_report_error(stderr, rv); }

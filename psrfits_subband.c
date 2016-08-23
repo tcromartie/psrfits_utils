@@ -119,9 +119,8 @@ void new_scales_and_offsets(struct psrfits *pfo, int numunsigned, Cmdline *cmd) 
     if (cmd->tgtstd == 0.0) {
         // Set these to give ~6-sigma of total gaussian
         // variation across the full range of values
-        // The numerator is (256.0, 16.0, 4.0) for (8, 4, 2) bits
-        target_std = (1 << pfo->hdr.nbits) / 6.0;
-	printf("target_std = %f\n", target_std);
+        // The numerator is (255.0, 15.0, 3.0) for (8, 4, 2) bits
+        target_std = ((1 << pfo->hdr.nbits) - 1.0) / 6.0;
     }
 
     if (cmd->tgtavg == 0.0) {
@@ -129,8 +128,7 @@ void new_scales_and_offsets(struct psrfits *pfo, int numunsigned, Cmdline *cmd) 
         // allow us more headroom for RFI
         // The 1st term is (127.5, 7.5, 1.5) for (8, 4, 2) bits
         target_avg = ((1 << (pfo->hdr.nbits - 1)) - 0.5) \
-            - 1.0 * target_std;
-	printf("target_avg = %f\n", target_avg);
+            - 0.5 * target_std;
     }
 
     if (cmd->bandpassfileP) {
@@ -150,7 +148,6 @@ void new_scales_and_offsets(struct psrfits *pfo, int numunsigned, Cmdline *cmd) 
 
     for (poln = 0 ; poln < npoln ; poln++) {
         float tgtavg = (poln < numunsigned) ? target_avg : 0.0;
-        printf("tgtavg = %f\n", tgtavg);
         float *out_scls = pfo->sub.dat_scales + poln * nchan;
         float *out_offs = pfo->sub.dat_offsets + poln * nchan;
         if (!cmd->bandpassfileP) {

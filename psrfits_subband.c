@@ -23,7 +23,8 @@ extern void pf_pack_8bit_to_4bit(struct psrfits *pf, int numunsigned);
 extern void pf_unpack_2bit_to_8bit(struct psrfits *pf, int numunsigned);
 extern void pf_unpack_4bit_to_8bit(struct psrfits *pf, int numunsigned);
 
-void read_bandpass(char *filenm, int *numchan, float **avgs, float **stds);
+void read_bandpass(struct psrfits *pf, char *filenm, int *numchan,
+                   float **avgs, float **stds);
 
 struct subband_info {
     int nsub;
@@ -132,14 +133,14 @@ void new_scales_and_offsets(struct psrfits *pfo, int numunsigned, Cmdline *cmd) 
 
     if (cmd->bandpassfileP) {
         int N;
-        read_bandpass(cmd->bandpassfile, &N, &avgs, &stds);
+        printf("Overriding input channel statistics with those in '%s'\n",
+               cmd->bandpassfile);
+        read_bandpass(pfo, cmd->bandpassfile, &N, &avgs, &stds);
         if (N != nchan) {
             printf("Error!:  Problem reading %d bandpass from '%s'\n\n",
                    N, cmd->bandpassfile);
             exit(-1);
         }
-        printf("Overriding input channel statistics with those in '%s'\n",
-               cmd->bandpassfile);
     } else {
         avgs = (float *)malloc(nchan * sizeof(float));
         stds = (float *)malloc(nchan * sizeof(float));
@@ -592,11 +593,12 @@ void read_weights(char *filenm, int *numchan, float **weights)
 }
 
 
-void read_bandpass(char *filenm, int *numchan, float **avgs, float **stds)
+void read_bandpass(struct psrfits *pf, char *filenm, int *numchan,
+                   float **avgs, float **stds)
 {
     FILE *infile;
     int ii, N, chan;
-    float freq, avg, std;
+    float *frqs, freq, avg, std;
     char line[80], *ret;
 
     infile = fopen(filenm, "r");
@@ -616,6 +618,13 @@ void read_bandpass(char *filenm, int *numchan, float **avgs, float **stds)
     // Allocate the output arrays
     *avgs = (float *)malloc(N * sizeof(float));
     *stds = (float *)malloc(N * sizeof(float));
+    frqs = (float *)malloc(N * sizeof(float));
+
+    // Verify that the number of channels is correct
+    if (N != pf->hdr.nchan) {
+        printf("Error: Number of channels in bandpass file not the same as in raw data!\n");
+        exit(1);
+    }
 
     // Rewind and read the lines for real
     rewind(infile);
@@ -623,12 +632,33 @@ void read_bandpass(char *filenm, int *numchan, float **avgs, float **stds)
     while (ii < N) {
         if (fgets(line, 80, infile) != NULL) {
             if (line[0]!='#') {
-                sscanf(line, "%d %f %f %f\n", &chan, &freq, (*avgs)+ii, (*stds)+ii);
+                sscanf(line, "%d %f %f %f\n", &chan, frqs+ii, (*avgs)+ii, (*stds)+ii);
                 ii++;
             }
         }
     }
     fclose(infile);
+
+    // Now check the channel frequency ordering to make sure consistent sideband
+    if (fabs((pf->sub.dat_freqs[0] - frqs[0])/frqs[0]) < 1e-7) {
+        printf("...frequencies seem to be in correct order.\n");
+    } else if (fabs((pf->sub.dat_freqs[0] - frqs[N-1])/frqs[N-1]) < 1e-7) {
+        printf("...frequencies need to be reversed in bandpass file (doing that).\n");
+        float tmp, *avg = (*avgs), *std = (*stds);
+        for (ii = 0 ; ii < N/2 ; ii++) {
+            tmp = avg[ii];
+            avg[ii] = avg[N-1-ii];
+            avg[N-1-ii] = tmp;
+            tmp = std[ii];
+            std[ii] = std[N-1-ii];
+            std[N-1-ii] = tmp;
+        }
+    } else {
+        printf("Error: Frequencies in the bandpass don't seem correct!\n");
+        printf("  For first channel:  %12.7f  vs  %12.7f\n",
+               pf->sub.dat_freqs[0], frqs[0]);
+        exit(1);
+    }
 }
 
 

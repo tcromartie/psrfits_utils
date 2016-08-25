@@ -254,6 +254,13 @@ void un_scale_and_offset_data(struct psrfits *pf, int numunsigned)
     }
 }
 
+void print_clips(struct psrfits *pf, struct subband_info *si) {
+    float prod = ((float)pf->hdr.nchan * (float) pf->hdr.nsblk * (float) pf->tot_rows);
+    float cliptot_high_per = (float) cliptot_high * 100.0 / prod;
+    float cliptot_low_per = (float) cliptot_low * 100.0 / prod;
+    printf("Upper clipped percentage: %f%; Lower clipped percentage: %f% \n",cliptot_high_per,cliptot_low_per);
+}
+
 int get_current_row(struct psrfits *pfi, struct subband_info *si) {
     static int firsttime = 1, num_pad_blocks = 0;
     static double last_offs, row_duration;
@@ -779,11 +786,9 @@ int main(int argc, char *argv[]) {
 
         // Set the new weights properly
         new_weights(&pfi, &pfo);
-
+        
     } while (pfi.status == 0);
-    	cliptot_high_per = (float) cliptot_high * 100.0 / (float)(8192.0*4096.0*180.0);
-    	cliptot_low_per = (float) cliptot_low * 100.0 / (float)(8192.0*4096.0*180.0);
-    	printf("Upper clipped percentage: %f%; Lower clipped percentage: %f% \n",cliptot_high_per,cliptot_low_per);
+        print_clips(&pfo, &si);
 
     rv = psrfits_close(&pfi);
     if (rv>100) { fits_report_error(stderr, rv); }

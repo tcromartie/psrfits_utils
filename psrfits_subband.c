@@ -254,7 +254,7 @@ void un_scale_and_offset_data(struct psrfits *pf, int numunsigned)
     }
 }
 
-void print_clips(struct psrfits *pf, struct subband_info *si) {
+void print_clips(struct psrfits *pf) {
     float prod = ((float)pf->hdr.nchan * (float) pf->hdr.nsblk * (float) pf->tot_rows);
     float cliptot_high_per = (float) cliptot_high * 100.0 / prod;
     float cliptot_low_per = (float) cliptot_low * 100.0 / prod;
@@ -788,7 +788,7 @@ int main(int argc, char *argv[]) {
         new_weights(&pfi, &pfo);
         
     } while (pfi.status == 0);
-        print_clips(&pfo, &si);
+        print_clips(&pfo);
 
     rv = psrfits_close(&pfi);
     if (rv>100) { fits_report_error(stderr, rv); }
